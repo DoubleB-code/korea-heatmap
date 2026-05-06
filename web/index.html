@@ -357,8 +357,8 @@
   <footer class="statusbar">
     <div>
       <span id="footer-date">—</span>
-      <span class="delay-badge">15분 지연</span>
-      <span style="margin-left:12px;">데이터: PyKRX (KRX) · 분류: 자체 매핑 · 표본: KOSPI 200 · 클릭 → 네이버 금융</span>
+      <span class="delay-badge">실시간</span>
+      <span style="margin-left:12px;">데이터: Yahoo Finance (yfinance) · 분류: 자체 매핑 · 표본: KOSPI 200 · 클릭 → 네이버 금융</span>
     </div>
     <div class="legend">
       <span class="label lo">−3%</span>
@@ -676,28 +676,4 @@ document.getElementById("pf-add")?.addEventListener("click", () => {
   if (!code || !STOCK_INDEX[code]) { alert("종목을 datalist에서 선택해주세요"); return; }
   if (!avg || avg < 1) { alert("평단가를 입력해주세요"); return; }
   if (!qty || qty < 1) { alert("수량을 입력해주세요"); return; }
-  pfHoldings.push({ code, avg, qty, ts: Date.now() });
-  pfPersist(); pfRender();
-  document.getElementById("pf-search").value = "";
-  document.getElementById("pf-avg").value = "";
-  document.getElementById("pf-qty").value = "";
-});
-document.getElementById("pf-list")?.addEventListener("click", (e) => {
-  if (e.target.classList.contains("pf-item-del")) {
-    pfHoldings.splice(parseInt(e.target.dataset.idx, 10), 1);
-    pfPersist(); pfRender();
-  }
-});
-
-// 데이터 로드 시 STOCK_INDEX 도 갱신되도록 hook
-const _origRender = render;
-window.render = function(data) {
-  _origRender(data);
-  if (data && data.children) rebuildStockIndex(data);
-};
-
-pfRender();
-
-</script>
-</body>
-</html>
+  pfHoldings.push(
