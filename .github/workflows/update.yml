@@ -10,9 +10,9 @@ name: Update KOSPI 200
 
 on:
   schedule:
-    - cron: '30 0 * * 1-5'   # 09:30 KST
-    - cron: '0 4 * * 1-5'    # 13:00 KST
-    - cron: '0 7 * * 1-5'    # 16:00 KST
+    # 매 30분 갱신 (월~금, 한국 장중 + 마감 30분 후)
+    # KST 09:00 ~ 16:30 = UTC 00:00 ~ 07:30
+    - cron: '0,30 0-7 * * 1-5'
   workflow_dispatch:
 
 concurrency:
