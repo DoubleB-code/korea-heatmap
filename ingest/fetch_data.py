@@ -299,12 +299,12 @@ def to_yf_symbol(code):
 
 
 def fetch_prices(codes):
-    """가격 + D-1 변동률. start/end 명시로 영업일 모호성 제거."""
+    """가격 + D-1 변동률 + 30일 sparkline. 일봉 45일 윈도우 (영업일 30일+ 확보)."""
     symbols = [to_yf_symbol(c) for c in codes]
-    # 휴장일 (어린이날, 추석 연휴 등) 대응 위해 14일 윈도우
+    # 30일 영업일 sparkline + 휴장일 버퍼 → 45일 캘린더 윈도우
     end_date = datetime.now(KST).date() + timedelta(days=1)
-    start_date = end_date - timedelta(days=14)
-    log.info("yf.download: %d symbols, period=%s..%s", len(symbols), start_date, end_date)
+    start_date = end_date - timedelta(days=45)
+    log.info("yf.download: %d symbols, period=%s..%s (30일 sparkline 포함)", len(symbols), start_date, end_date)
 
     df = with_retry(
         yf.download,
@@ -361,10 +361,14 @@ def fetch_prices(codes):
                 )
                 sample_logged += 1
 
+            # 30일 sparkline (마지막 30개 영업일 종가)
+            spark_pts = [int(v) for v in closes.tail(30).tolist() if v > 0]
+
             out[code] = {
                 "today_close": today_close,
                 "prev_close": prev_close,
                 "change_pct": round(change, 2),
+                "spark": spark_pts,
             }
         except (KeyError, IndexError, ValueError):
             continue
@@ -442,6 +446,7 @@ def fetch_kospi200(date):
             "change": p["change_pct"],
             "sector": classify_sector(code, name),
             "price": int(p["today_close"]),
+            "spark": p.get("spark", []),
         }
         rows.append(row)
 

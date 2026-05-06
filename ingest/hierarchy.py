@@ -22,6 +22,8 @@ def build_hierarchy(date, rows):
         }
         if r.get("price"):
             item["price"] = r["price"]
+        if r.get("spark") and isinstance(r["spark"], list):
+            item["spark"] = r["spark"]
         by_sector.setdefault(r["sector"], []).append(item)
 
     children = sorted(
