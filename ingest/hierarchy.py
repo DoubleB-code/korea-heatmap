@@ -7,15 +7,22 @@ MAX_CHANGE_PCT = 30.0
 
 
 def build_hierarchy(date, rows):
-    """rows → D3 hierarchical 트리. 섹터/종목 모두 시총 내림차순 정렬."""
+    """rows → D3 hierarchical 트리. 섹터/종목 모두 시총 내림차순 정렬.
+
+    price 필드는 트리맵 렌더링/포트폴리오 손익/sparkline 누적에 필수.
+    fetch_data 가 채우면 보존, 없으면 생략.
+    """
     by_sector = {}
     for r in rows:
-        by_sector.setdefault(r["sector"], []).append({
+        item = {
             "code": r["code"],
             "name": r["name"],
             "value": r["value"],
             "change": r["change"],
-        })
+        }
+        if r.get("price"):
+            item["price"] = r["price"]
+        by_sector.setdefault(r["sector"], []).append(item)
 
     children = sorted(
         [{"name": s, "children": items} for s, items in by_sector.items()],
