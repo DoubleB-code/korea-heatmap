@@ -522,13 +522,13 @@ function render(data) {
     .attr("fill", "#0a0a0a")
     .attr("stroke", "none");
 
-  // 섹터 헤더 띠 (어두운 회색, 26px)
+  // 섹터 헤더 띠 (눈에 띄는 진한 회색, 28px)
   svg.selectAll("rect.sector-header-bg")
     .data(root.descendants().filter(d => d.depth === 1))
     .enter().append("rect").attr("class", "sector-header-bg")
     .attr("x", d => d.x0).attr("y", d => d.y0)
-    .attr("width", d => d.x1 - d.x0).attr("height", 26)
-    .attr("fill", "#1a1a1a");
+    .attr("width", d => d.x1 - d.x0).attr("height", 28)
+    .attr("fill", "#2a2a2a");
 
   // 섹터별 가중평균 변동률
   function _secAvg(d) {
@@ -616,8 +616,8 @@ function render(data) {
       tooltip.style("opacity", 0);
     })
     .on("click", function(event, d) {
-      const url = "https://finance.naver.com/item/main.naver?code=" + d.data.code;
-      window.open(url, "_blank", "noopener,noreferrer");
+      if (typeof openStockModal === 'function') openStockModal(d);
+      else window.open("https://finance.naver.com/item/main.naver?code=" + d.data.code, "_blank", "noopener,noreferrer");
     });
 
   cells.each(function(d) {
@@ -642,6 +642,11 @@ function render(data) {
         .text(sign + d.data.change.toFixed(2) + "%");
     }
   });
+
+  // z-order 보장: 섹터 헤더(띠+라벨+변동률)를 종목 셀 위로 항상 올림
+  svg.selectAll("rect.sector-header-bg").raise();
+  svg.selectAll("text.sector-label").raise();
+  svg.selectAll("text.sector-pct").raise();
 }
 
 fetch("data/treemap.json", { cache: "no-cache" })
