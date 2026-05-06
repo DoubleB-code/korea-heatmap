@@ -273,6 +273,12 @@
     .search { width: 140px; }
   }
   @media (max-width: 700px) {
+    /* 모바일: 페이지 자체 스크롤 가능, 트리맵 세로로 길게 */
+    html, body { overflow-y: auto; height: auto; min-height: 100%; }
+    #app { height: auto; min-height: 100vh; }
+    main { overflow: visible; height: auto; }
+    #treemap-wrap { min-height: 2800px; height: 2800px; }
+    header.topbar { position: sticky; top: 0; z-index: 50; }
     .ad-sidebar { display: none; }
     .brand .tagline { display: none; }
     .brand .logo { font-size: 15px; }
@@ -281,7 +287,8 @@
     .controls .seg { display: none; }
     .search { width: 110px; padding: 6px 10px; font-size: 11px; }
     .pf-toggle { padding: 6px 10px; font-size: 11px; }
-    .sector-label { font-size: 10px; letter-spacing: 0.12em; }
+    .sector-label { font-size: 14px; }
+    .sector-pct { font-size: 13px; }
     .modal-card { width: 92vw; padding: 16px 18px; }
     .modal-name { font-size: 16px; }
     .modal-pct { font-size: 22px; }
@@ -497,8 +504,11 @@ function updateHeader(data) {
 function render(data) {
   currentData = data;
   const wrap = document.getElementById("treemap-wrap");
+  const isMobile = window.innerWidth <= 700;
   const W = wrap.clientWidth;
-  const H = wrap.clientHeight;
+  // 모바일: 화면 폭 좁으니 세로로 길게 (스크롤) — 섹터 13개 × 약 220px
+  // 데스크톱: 컨테이너 높이 그대로
+  const H = isMobile ? Math.max(2800, wrap.clientHeight) : wrap.clientHeight;
   svg.attr("width", W).attr("height", H);
   svg.selectAll("*").remove();
 
