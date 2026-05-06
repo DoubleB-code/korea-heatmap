@@ -1,12 +1,13 @@
 """
-KOSPI 200 일별 스냅샷 수집 (FinanceDataReader 기반).
+KOSPI 200 일별 스냅샷 수집 (yfinance / Yahoo Finance 기반).
 
-PyKRX → FinanceDataReader 전환 이유:
-- KRX가 GitHub Actions IP를 차단해서 PyKRX 작동 불가
-- FinanceDataReader는 야후 파이낸스 + KRX 혼합 — GitHub Actions에서 정상 작동
+PyKRX -> FinanceDataReader -> yfinance 전환 이력:
+- PyKRX: KRX가 GitHub Actions IP를 차단해서 작동 불가
+- FinanceDataReader: 한국 종목에 대해 내부적으로 KRX/Naver fchart 호출 -> 동일 차단 문제
+- yfinance: 100% Yahoo Finance -- 검증된 GitHub Actions 호환
 
-운영 정책 (한국 영업일 KST 기준):
-    - 매 30분 갱신 (월~금 09:00 ~ 16:30 KST)
+Universe (200 종목):
+- sectors.TICKER_TO_SECTOR 의 keys 가 KOSPI 200 ticker 리스트 (분기 1회 수동 갱신)
 
 종료 코드:
     0  성공 또는 휴장일 SKIP
@@ -17,18 +18,17 @@ from __future__ import annotations
 
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, timedelta
-
-KST = timezone(timedelta(hours=9))
 from pathlib import Path
 
-import FinanceDataReader as fdr
+import pandas as pd
+import yfinance as yf
 
-from sectors import classify_sector
+from sectors import TICKER_TO_SECTOR, classify_sector
 
-# ============================================================
-# 상수
-# ============================================================
+KST = timezone(timedelta(hours=9))
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = PROJECT_ROOT / "web" / "data"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -41,11 +41,42 @@ MIN_STOCKS = 150
 MAX_CHANGE_PCT = 30.0
 MAX_RETRIES = 3
 BACKOFF_BASE = 1.0
-PER_REQUEST_DELAY = 0.0  # fdr는 일괄 호출이라 종목별 sleep 불필요
+PER_REQUEST_DELAY = 0.0
+MARCAP_WORKERS = 16
 
-# ============================================================
-# 로깅
-# ============================================================
+KOREAN_NAMES = {
+    "005930": "삼성전자",
+    "000660": "SK하이닉스",
+    "373220": "LG에너지솔루션",
+    "207940": "삼성바이오로직스",
+    "005380": "현대차",
+    "000270": "기아",
+    "005490": "POSCO홀딩스",
+    "035420": "NAVER",
+    "035720": "카카오",
+    "051910": "LG화학",
+    "006400": "삼성SDI",
+    "068270": "셀트리온",
+    "105560": "KB금융",
+    "055550": "신한지주",
+    "012330": "현대모비스",
+    "028260": "삼성물산",
+    "066570": "LG전자",
+    "003670": "포스코퓨처엠",
+    "032830": "삼성생명",
+    "086790": "하나금융지주",
+    "138040": "메리츠금융지주",
+    "316140": "우리금융지주",
+    "017670": "SK텔레콤",
+    "030200": "KT",
+    "033780": "KT&G",
+    "015760": "한국전력",
+    "009540": "HD한국조선해양",
+    "024110": "기업은행",
+    "011200": "HMM",
+    "010130": "고려아연",
+}
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)-7s %(message)s",
@@ -54,9 +85,6 @@ logging.basicConfig(
 log = logging.getLogger("kospi-heatmap")
 
 
-# ============================================================
-# 재시도
-# ============================================================
 def with_retry(fn, *args, _label="", **kwargs):
     last_exc = None
     for attempt in range(1, MAX_RETRIES + 1):
@@ -76,9 +104,6 @@ def with_retry(fn, *args, _label="", **kwargs):
     ) from last_exc
 
 
-# ============================================================
-# 영업일 (로컬 calendar 기반 — 외부 API 호출 없음)
-# ============================================================
 def _local_business_day_fallback():
     dt = datetime.now(KST)
     while dt.weekday() >= 5:
@@ -87,7 +112,6 @@ def _local_business_day_fallback():
 
 
 def resolve_business_day(requested):
-    """요청일 또는 오늘을 영업일로 보정. 외부 API 사용 안 함."""
     today = datetime.now(KST).strftime("%Y%m%d")
     if requested:
         return requested, True
@@ -95,72 +119,134 @@ def resolve_business_day(requested):
     return fallback, fallback == today
 
 
-# ============================================================
-# KOSPI 200 수집 — FinanceDataReader (야후 + KRX 혼합)
-# ============================================================
-def fetch_kospi200(date):
-    """KOSPI 200 구성종목의 시총·등락률·종가를 받아온다.
+def load_universe():
+    codes = sorted(TICKER_TO_SECTOR.keys())
+    log.info("Universe loaded: %d codes (sectors.TICKER_TO_SECTOR)", len(codes))
+    return codes
 
-    fdr.StockListing('KOSPI200') — 구성종목 리스트
-    fdr.StockListing('KOSPI')    — 전체 KOSPI 시세 (Marcap, Close, ChagesRatio 포함)
-    """
-    log.info("기준일: %s (FinanceDataReader)", date)
 
-    # 1) KOSPI 200 구성종목 리스트
-    kospi200 = with_retry(fdr.StockListing, "KOSPI200", _label="StockListing(KOSPI200)")
-    log.info("KOSPI 200 구성종목 받음: %d행", len(kospi200))
+def to_yf_symbol(code):
+    return f"{code.zfill(6)}.KS"
 
-    # 2) 전체 KOSPI 시세 (시총·종가·등락률 한 번에)
-    kospi_all = with_retry(fdr.StockListing, "KOSPI", _label="StockListing(KOSPI)")
-    log.info("KOSPI 전체 시세 받음: %d행", len(kospi_all))
 
-    # 3) 컬럼명 정규화
-    def col(df, *candidates):
-        for c in candidates:
-            if c in df.columns:
-                return c
-        return None
+def fetch_prices(codes):
+    symbols = [to_yf_symbol(c) for c in codes]
+    log.info("yf.download: %d symbols", len(symbols))
 
-    code_col_200 = col(kospi200, "Code", "Symbol")
-    code_col_all = col(kospi_all, "Code", "Symbol")
-    name_col = col(kospi_all, "Name")
-    cap_col = col(kospi_all, "Marcap", "MarketCap")
-    change_col = col(kospi_all, "ChagesRatio", "ChangesRatio", "ChangeRatio")
-    close_col = col(kospi_all, "Close")
-
-    if not all([code_col_200, code_col_all, name_col, cap_col, change_col]):
-        raise RuntimeError(f"필수 컬럼 누락. KOSPI 컬럼: {list(kospi_all.columns)}")
-
-    # 4) KOSPI 200 코드 set (6자리 zero-pad)
-    kospi200_codes = set(
-        str(c).zfill(6) for c in kospi200[code_col_200].astype(str)
+    df = with_retry(
+        yf.download,
+        tickers=" ".join(symbols),
+        period="5d",
+        interval="1d",
+        group_by="ticker",
+        threads=True,
+        progress=False,
+        auto_adjust=False,
+        _label="yf.download",
     )
 
-    # 5) KOSPI 200 만 필터 + row 변환
-    rows = []
-    for _, r in kospi_all.iterrows():
-        code = str(r[code_col_all]).zfill(6)
-        if code not in kospi200_codes:
-            continue
+    if df is None or df.empty:
+        raise RuntimeError("yf.download empty result")
+
+    out = {}
+    for code in codes:
+        sym = to_yf_symbol(code)
         try:
-            cap = int(r[cap_col] or 0)
-            change = float(r[change_col] or 0)
-            close = int(r[close_col] or 0) if close_col else 0
-            name = str(r[name_col]) if r[name_col] else code
-        except Exception:
+            if isinstance(df.columns, pd.MultiIndex):
+                sub = df[sym]
+            else:
+                sub = df
+            closes = sub["Close"].dropna()
+            if len(closes) < 2:
+                continue
+            today_close = float(closes.iloc[-1])
+            prev_close = float(closes.iloc[-2])
+            if prev_close <= 0:
+                continue
+            change = (today_close - prev_close) / prev_close * 100
+            out[code] = {
+                "today_close": today_close,
+                "prev_close": prev_close,
+                "change_pct": round(change, 2),
+            }
+        except (KeyError, IndexError, ValueError):
             continue
+
+    log.info("Prices collected: %d/%d", len(out), len(codes))
+    return out
+
+
+def _fetch_one_marcap(code):
+    sym = to_yf_symbol(code)
+    try:
+        t = yf.Ticker(sym)
+        fi = t.fast_info
+        cap = None
+        if hasattr(fi, "get"):
+            cap = fi.get("market_cap") or fi.get("marketCap")
+        else:
+            cap = getattr(fi, "market_cap", None) or getattr(fi, "marketCap", None)
+        return code, int(cap) if cap else 0
+    except Exception:
+        return code, 0
+
+
+def fetch_marcaps(codes):
+    log.info("Marcap parallel fetch: %d codes (workers=%d)", len(codes), MARCAP_WORKERS)
+    out = {}
+    with ThreadPoolExecutor(max_workers=MARCAP_WORKERS) as ex:
+        futures = {ex.submit(_fetch_one_marcap, c): c for c in codes}
+        for fut in as_completed(futures):
+            code, cap = fut.result()
+            if cap > 0:
+                out[code] = cap
+    log.info("Marcap collected: %d/%d", len(out), len(codes))
+    return out
+
+
+def resolve_name(code):
+    return KOREAN_NAMES.get(code, code)
+
+
+def fetch_kospi200(date):
+    log.info("Reference date: %s (yfinance)", date)
+
+    codes = load_universe()
+    prices = fetch_prices(codes)
+    if not prices:
+        raise RuntimeError("No prices collected -- Yahoo Finance response error")
+
+    marcaps = fetch_marcaps(codes)
+    if not marcaps:
+        raise RuntimeError("No marcaps collected -- Yahoo Finance fast_info error")
+
+    rows = []
+    skipped = 0
+    for code in codes:
+        if code not in prices or code not in marcaps:
+            skipped += 1
+            continue
+        p = prices[code]
+        cap = marcaps[code]
         if cap <= 0:
+            skipped += 1
             continue
+
+        if abs(p["change_pct"]) > MAX_CHANGE_PCT:
+            log.warning("Outlier excluded: %s change %+.2f%%", code, p["change_pct"])
+            skipped += 1
+            continue
+
+        name = resolve_name(code)
         row = {
             "code": code,
             "name": name,
-            "value": cap // 100_000_000,  # 억원
-            "change": round(change, 2),
+            "value": cap // 100_000_000,
+            "change": p["change_pct"],
             "sector": classify_sector(code, name),
+            "price": int(p["today_close"]),
         }
-        if close > 0:
-            row["price"] = close
         rows.append(row)
 
-    log.info("수집 완료: %d개 (KOSPI 200 매칭)", len(rows))
+    log.info("Collection complete: %d stocks (skipped %d)", len(rows), skipped)
     return rows

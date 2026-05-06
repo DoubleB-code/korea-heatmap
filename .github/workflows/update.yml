@@ -108,8 +108,8 @@ jobs:
               '',
               '### 운영자 액션',
               '- [ ] Actions 로그 확인',
-              '- [ ] FinanceDataReader 응답 형식 변경 의심 시 fdr 버전 점검',
-              '- [ ] 야후 파이낸스 차단 의심 시 KIS API 백업 라인 활성화',
+              '- [ ] yfinance 응답 형식 변경 의심 시 라이브러리 버전 점검',
+              '- [ ] Yahoo Finance API 차단 의심 시 KIS API 백업 라인 활성화',
               '- [ ] 연속 3회 실패 시 수동 트리거(workflow_dispatch)로 재시도',
             ].join('\n');
 

@@ -1,7 +1,9 @@
-# 핀 버전 (sha256 해시 검증은 pip install --require-hashes 로 추가 가능)
-# PyKRX 제거 사유: GitHub Actions IP가 KRX에 차단되어 영구히 작동 불가
-# FinanceDataReader 는 야후 파이낸스 + KRX 혼합 — Actions에서 정상 작동
-finance-datareader>=0.9.0
+# 데이터 소스: 100% Yahoo Finance (yfinance)
+#
+# 전환 이력:
+#   PyKRX            → KRX가 GitHub Actions IP 차단해서 작동 불가
+#   FinanceDataReader → 한국 종목에 대해 KRX/Naver fchart 호출 (동일 차단 위험)
+#   yfinance         → Yahoo Finance 직접 호출 (GitHub Actions 호환 검증됨)
+yfinance>=0.2.40
 pandas>=2.2.0,<3.0
 requests>=2.31.0
-lxml>=4.9.0
