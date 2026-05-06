@@ -172,13 +172,24 @@ def fetch_kospi200(date):
         except Exception:
             name = code
 
-        rows.append({
+        # 종가 (있으면 추가) — 포트폴리오 평가손익 계산용
+        price = None
+        try:
+            if "종가" in cap_df.columns:
+                price = int(cap_df.at[code, "종가"])
+        except Exception:
+            price = None
+
+        row = {
             "code": code,
             "name": name,
             "value": market_cap // 100_000_000,
             "change": round(change_pct, 2),
             "sector": classify_sector(code, name),
-        })
+        }
+        if price and price > 0:
+            row["price"] = price
+        rows.append(row)
 
         time.sleep(PER_REQUEST_DELAY)
 

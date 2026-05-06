@@ -88,6 +88,69 @@
   @media (max-width: 900px) {
     .ad-sidebar { display: none; }
   }
+  /* 포트폴리오 토글 버튼 */
+  .pf-toggle {
+    display: flex; align-items: center; gap: 6px;
+    background: #141414; border: 1px solid #262626; border-radius: 6px;
+    color: #e8e8e8; padding: 7px 12px; font-size: 12px; cursor: pointer;
+    font-family: inherit; font-weight: 500; letter-spacing: -0.01em;
+    transition: border-color 0.1s, background 0.1s;
+  }
+  .pf-toggle:hover { border-color: #5fc285; background: #1a1a1a; }
+  .pf-toggle.active { background: #5fc285; color: #000; border-color: #5fc285; }
+  /* 포트폴리오 패널 */
+  #portfolio {
+    width: 340px; flex-shrink: 0; background: #0a0a0a;
+    border-left: 1px solid #1a1a1a; display: flex; flex-direction: column;
+    transition: width 0.2s ease, opacity 0.2s ease; overflow: hidden;
+  }
+  #portfolio.hidden { width: 0; opacity: 0; border-left: 0; }
+  .pf-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid #1a1a1a;
+    font-weight: 700; font-size: 14px; letter-spacing: -0.01em;
+  }
+  .pf-close { background: transparent; border: 0; color: #6b7280; font-size: 20px; cursor: pointer; line-height: 1; }
+  .pf-close:hover { color: #fff; }
+  .pf-summary { padding: 14px 16px; border-bottom: 1px solid #1a1a1a; }
+  .pf-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
+  .pf-row.pf-pnl-row { padding-top: 8px; margin-top: 4px; border-top: 1px dashed #262626; }
+  .pf-k { color: #6b7280; }
+  .pf-v { font-weight: 700; font-size: 13px; }
+  .pf-form { padding: 14px 16px; border-bottom: 1px solid #1a1a1a; }
+  .pf-label { display: block; font-size: 11px; color: #6b7280; margin-bottom: 6px; font-weight: 500; }
+  .pf-form input {
+    width: 100%; background: #141414; border: 1px solid #262626;
+    border-radius: 5px; padding: 7px 10px; color: #e8e8e8; font-size: 12px;
+    font-family: inherit; margin-bottom: 6px;
+  }
+  .pf-form input:focus { outline: none; border-color: #5fc285; }
+  .pf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .pf-grid input { margin-bottom: 0; }
+  .pf-btn {
+    width: 100%; margin-top: 8px; background: #5fc285; color: #000;
+    border: 0; border-radius: 5px; padding: 8px; font-size: 12px;
+    font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+  .pf-btn:hover { background: #4ea670; }
+  .pf-list { flex: 1; overflow-y: auto; padding: 8px 16px 16px; }
+  .pf-empty { color: #6b7280; font-size: 12px; padding: 12px 0; text-align: center; }
+  .pf-item {
+    background: #141414; border: 1px solid #1a1a1a; border-radius: 6px;
+    padding: 10px 12px; margin-bottom: 8px; font-size: 12px;
+  }
+  .pf-item:hover { border-color: #5fc285; }
+  .pf-item-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .pf-item-name { font-weight: 700; font-size: 13px; }
+  .pf-item-code { color: #6b7280; font-size: 10px; margin-left: 6px; font-weight: 400; }
+  .pf-item-del { background: transparent; border: 0; color: #6b7280; cursor: pointer; font-size: 14px; }
+  .pf-item-del:hover { color: #cc6868; }
+  .pf-item-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 11px; }
+  .pf-item-row .k { color: #6b7280; }
+  .pf-item-row .v { font-weight: 600; }
+  .pf-item-pnl-row { padding-top: 6px; margin-top: 4px; border-top: 1px dashed #262626; }
+  .pf-pos { color: #5fc285; }
+  .pf-neg { color: #cc6868; }
   .sector-label {
     fill: #9ca3af; font-weight: 700; font-size: 10px;
     pointer-events: none; letter-spacing: 0.06em;
@@ -200,6 +263,10 @@
         <button data-period="1W" disabled title="추후 지원">1주</button>
         <button data-period="1M" disabled title="추후 지원">1개월</button>
       </div>
+      <button id="pf-toggle" class="pf-toggle">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+        <span>내 주식</span>
+      </button>
     </div>
   </header>
   <main>
@@ -221,6 +288,31 @@
     <div id="treemap-wrap" style="position:relative; flex:1; min-width:0;">
       <svg id="treemap"></svg>
     </div>
+    <aside id="portfolio" class="hidden">
+      <div class="pf-header">
+        <span>내 포트폴리오</span>
+        <button class="pf-close" id="pf-close" aria-label="닫기">×</button>
+      </div>
+      <div class="pf-summary">
+        <div class="pf-row"><span class="pf-k">총 매입금액</span><span class="pf-v" id="pf-cost">0</span></div>
+        <div class="pf-row"><span class="pf-k">총 평가금액</span><span class="pf-v" id="pf-mkt">0</span></div>
+        <div class="pf-row pf-pnl-row"><span class="pf-k">평가손익</span><span class="pf-v" id="pf-pnl">0</span></div>
+        <div class="pf-row"><span class="pf-k">수익률</span><span class="pf-v" id="pf-ret">0.00%</span></div>
+      </div>
+      <div class="pf-form">
+        <label class="pf-label">종목 추가</label>
+        <input id="pf-search" list="pf-tickers" placeholder="종목명 또는 코드" autocomplete="off" />
+        <datalist id="pf-tickers"></datalist>
+        <div class="pf-grid">
+          <input id="pf-avg" type="number" placeholder="평단가 (원)" min="1" />
+          <input id="pf-qty" type="number" placeholder="수량 (주)" min="1" />
+        </div>
+        <button id="pf-add" class="pf-btn">+ 추가</button>
+      </div>
+      <div class="pf-list" id="pf-list">
+        <div class="pf-empty">종목을 추가하면 손익이 표시됩니다</div>
+      </div>
+    </aside>
     <div class="tooltip" id="tooltip"></div>
     <div class="empty-state" id="empty" style="display:none;">
       <div>📊 데이터를 불러올 수 없습니다</div>
@@ -328,9 +420,9 @@ function render(data) {
 
   d3.treemap()
     .size([W, H])
-    .paddingTop(d => d.depth === 0 ? 4 : 18)
-    .paddingInner(2)
-    .paddingOuter(4)
+    .paddingTop(d => d.depth === 0 ? 6 : 20)
+    .paddingInner(3)
+    .paddingOuter(6)
     .tile(d3.treemapSquarify.ratio(1.4))(root);
 
   // 섹터 배경 (검정)
@@ -450,6 +542,128 @@ document.getElementById("search").addEventListener("input", e => {
     return (d.data.name.toLowerCase().includes(q) || d.data.code.includes(q)) ? 1 : 0.15;
   });
 });
+
+
+// ============================================================
+// 포트폴리오 패널 로직
+// ============================================================
+const PF_KEY = "korea_heatmap_portfolio_v1";
+let pfHoldings = [];
+try { pfHoldings = JSON.parse(localStorage.getItem(PF_KEY) || "[]"); } catch (e) {}
+
+const STOCK_INDEX = {};
+function rebuildStockIndex(data) {
+  Object.keys(STOCK_INDEX).forEach(k => delete STOCK_INDEX[k]);
+  data.children.forEach(sec => sec.children.forEach(s => {
+    STOCK_INDEX[s.code] = { name: s.name, price: s.price, change: s.change, sector: sec.name };
+  }));
+  const dl = document.getElementById("pf-tickers");
+  if (dl) {
+    dl.innerHTML = "";
+    Object.entries(STOCK_INDEX).forEach(([code, info]) => {
+      const o = document.createElement("option");
+      o.value = info.name + " (" + code + ")";
+      dl.appendChild(o);
+    });
+  }
+  pfRender();
+}
+
+function pfPersist() { try { localStorage.setItem(PF_KEY, JSON.stringify(pfHoldings)); } catch (e) {} }
+
+function pfRender() {
+  const list = document.getElementById("pf-list");
+  if (!list) return;
+  if (pfHoldings.length === 0) {
+    list.innerHTML = '<div class="pf-empty">종목을 추가하면 손익이 표시됩니다</div>';
+  } else {
+    list.innerHTML = pfHoldings.map((h, idx) => {
+      const info = STOCK_INDEX[h.code];
+      if (!info) return "";
+      const cur = info.price;
+      const cost = h.avg * h.qty;
+      const hasPrice = !!cur;
+      const mkt = hasPrice ? cur * h.qty : 0;
+      const pnl = hasPrice ? mkt - cost : 0;
+      const ret = hasPrice ? ((cur - h.avg) / h.avg) * 100 : 0;
+      const cls = pnl >= 0 ? "pf-pos" : "pf-neg";
+      const sign = pnl >= 0 ? "+" : "";
+      return `<div class="pf-item">
+        <div class="pf-item-head">
+          <div><span class="pf-item-name">${escapeHtml(info.name)}</span><span class="pf-item-code">${h.code}</span></div>
+          <button class="pf-item-del" data-idx="${idx}">×</button>
+        </div>
+        <div class="pf-item-row"><span class="k">평단가</span><span class="v">${h.avg.toLocaleString()}원</span></div>
+        <div class="pf-item-row"><span class="k">현재가</span><span class="v">${hasPrice ? cur.toLocaleString()+"원" : "—"}</span></div>
+        <div class="pf-item-row"><span class="k">보유</span><span class="v">${h.qty.toLocaleString()}주</span></div>
+        <div class="pf-item-row pf-item-pnl-row"><span class="k">평가손익</span><span class="v ${cls}">${hasPrice ? sign+pnl.toLocaleString()+"원" : "—"}</span></div>
+        <div class="pf-item-row"><span class="k">수익률</span><span class="v ${cls}">${hasPrice ? sign+ret.toFixed(2)+"%" : "—"}</span></div>
+      </div>`;
+    }).join("");
+  }
+  let totCost = 0, totMkt = 0;
+  pfHoldings.forEach(h => {
+    const info = STOCK_INDEX[h.code];
+    if (!info || !info.price) return;
+    totCost += h.avg * h.qty;
+    totMkt += info.price * h.qty;
+  });
+  const totPnl = totMkt - totCost;
+  const totRet = totCost > 0 ? (totPnl / totCost * 100) : 0;
+  const cls = totPnl >= 0 ? "pf-pos" : "pf-neg";
+  const sign = totPnl >= 0 ? "+" : "";
+  const set = (id, txt, c) => { const e = document.getElementById(id); if (e) { e.textContent = txt; if (c !== undefined) e.className = "pf-v " + c; } };
+  set("pf-cost", totCost.toLocaleString() + "원");
+  set("pf-mkt", totMkt.toLocaleString() + "원");
+  set("pf-pnl", sign + totPnl.toLocaleString() + "원", cls);
+  set("pf-ret", sign + totRet.toFixed(2) + "%", cls);
+}
+
+document.getElementById("pf-toggle")?.addEventListener("click", () => {
+  document.getElementById("portfolio").classList.toggle("hidden");
+  document.getElementById("pf-toggle").classList.toggle("active");
+  setTimeout(() => { if (currentData) render(currentData); }, 220);
+});
+document.getElementById("pf-close")?.addEventListener("click", () => {
+  document.getElementById("portfolio").classList.add("hidden");
+  document.getElementById("pf-toggle").classList.remove("active");
+  setTimeout(() => { if (currentData) render(currentData); }, 220);
+});
+document.getElementById("pf-add")?.addEventListener("click", () => {
+  const q = document.getElementById("pf-search").value.trim();
+  const m = q.match(/\((\d{6})\)/) || [];
+  let code = m[1];
+  if (!code) {
+    const found = Object.entries(STOCK_INDEX).find(([c, i]) => i.name === q || c === q);
+    if (found) code = found[0];
+  }
+  const avg = parseInt(document.getElementById("pf-avg").value, 10);
+  const qty = parseInt(document.getElementById("pf-qty").value, 10);
+  if (!code || !STOCK_INDEX[code]) { alert("종목을 datalist에서 선택해주세요"); return; }
+  if (!avg || avg < 1) { alert("평단가를 입력해주세요"); return; }
+  if (!qty || qty < 1) { alert("수량을 입력해주세요"); return; }
+  pfHoldings.push({ code, avg, qty, ts: Date.now() });
+  pfPersist(); pfRender();
+  document.getElementById("pf-search").value = "";
+  document.getElementById("pf-avg").value = "";
+  document.getElementById("pf-qty").value = "";
+});
+document.getElementById("pf-list")?.addEventListener("click", (e) => {
+  if (e.target.classList.contains("pf-item-del")) {
+    pfHoldings.splice(parseInt(e.target.dataset.idx, 10), 1);
+    pfPersist(); pfRender();
+  }
+});
+
+// 데이터 로드 시 STOCK_INDEX 도 갱신되도록 hook
+const _origRender = render;
+window.render = function(data) {
+  _origRender(data);
+  if (data && data.children) rebuildStockIndex(data);
+};
+
+pfRender();
+
 </script>
 </body>
 </html>

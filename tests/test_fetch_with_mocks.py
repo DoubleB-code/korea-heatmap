@@ -19,7 +19,7 @@ def fast_settings(monkeypatch):
 def make_cap_df(rows):
     """[(code, market_cap, change_pct), ...] → DataFrame."""
     df = pd.DataFrame(
-        [{"시가총액": cap, "등락률": chg} for _, cap, chg in rows],
+        [{"시가총액": cap, "등락률": chg, "종가": max(1, cap // 1_000_000_000)} for _, cap, chg in rows],
         index=[c for c, _, _ in rows],
     )
     df.index.name = "티커"
