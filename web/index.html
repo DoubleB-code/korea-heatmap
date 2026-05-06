@@ -155,10 +155,10 @@
   .pf-pos { color: #5fc285; }
   .pf-neg { color: #cc6868; }
   .sector-label {
-    fill: #fff; font-weight: 800; font-size: 13px;
-    pointer-events: none; letter-spacing: -0.01em;
+    fill: #fff; font-weight: 900; font-size: 15px;
+    pointer-events: none; letter-spacing: -0.02em;
     font-family: 'Noto Sans KR', sans-serif;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
   }
   .ticker-name {
     fill: #fff; font-weight: 700; pointer-events: none;
@@ -276,7 +276,7 @@
     .controls .seg { display: none; }
     .search { width: 110px; padding: 6px 10px; font-size: 11px; }
     .pf-toggle { padding: 6px 10px; font-size: 11px; }
-    .sector-label { font-size: 11px; }
+    .sector-label { font-size: 12px; }
     .modal-card { width: 92vw; padding: 16px 18px; }
     .modal-name { font-size: 16px; }
     .modal-pct { font-size: 22px; }
@@ -503,29 +503,40 @@ function render(data) {
 
   d3.treemap()
     .size([W, H])
-    .paddingTop(d => d.depth === 0 ? 4 : 28)
-    .paddingInner(2).paddingOuter(8)
+    .paddingTop(d => d.depth === 0 ? 4 : 36)
+    .paddingInner(2).paddingOuter(10)
     .tile(d3.treemapSquarify.ratio(1.4))(root);
 
+  // 섹터 외곽 박스
   svg.selectAll("rect.sector-bg")
     .data(root.descendants().filter(d => d.depth === 1))
     .enter().append("rect").attr("class", "sector-bg")
     .attr("x", d => d.x0).attr("y", d => d.y0)
     .attr("width", d => d.x1 - d.x0).attr("height", d => d.y1 - d.y0)
     .attr("fill", "#000")
-    .attr("stroke", "#3a3a3a").attr("stroke-width", 1.5);
+    .attr("stroke", "#4a4a4a").attr("stroke-width", 2);
 
+  // 섹터 헤더 띠 (진한 회색, 28px 높이)
   svg.selectAll("rect.sector-header-bg")
     .data(root.descendants().filter(d => d.depth === 1))
     .enter().append("rect").attr("class", "sector-header-bg")
     .attr("x", d => d.x0).attr("y", d => d.y0)
-    .attr("width", d => d.x1 - d.x0).attr("height", 22)
-    .attr("fill", "#1a1a1a");
+    .attr("width", d => d.x1 - d.x0).attr("height", 28)
+    .attr("fill", "#262626");
 
+  // 헤더와 종목 영역 분리선
+  svg.selectAll("rect.sector-header-line")
+    .data(root.descendants().filter(d => d.depth === 1))
+    .enter().append("rect").attr("class", "sector-header-line")
+    .attr("x", d => d.x0).attr("y", d => d.y0 + 28)
+    .attr("width", d => d.x1 - d.x0).attr("height", 1)
+    .attr("fill", "#5a5a5a");
+
+  // 섹터 헤더 글자 (큰 흰색)
   svg.selectAll("text.sector-label")
     .data(root.descendants().filter(d => d.depth === 1))
     .enter().append("text").attr("class", "sector-label")
-    .attr("x", d => d.x0 + 10).attr("y", d => d.y0 + 15)
+    .attr("x", d => d.x0 + 12).attr("y", d => d.y0 + 19)
     .text(d => (d.x1 - d.x0) < 60 ? "" : d.data.name);
 
   const cells = svg.selectAll("g.cell")
