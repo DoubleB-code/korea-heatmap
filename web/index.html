@@ -502,15 +502,28 @@ function render(data) {
   svg.attr("width", W).attr("height", H);
   svg.selectAll("*").remove();
 
-  // 섹터 내 비율 기반 + 큰 종목 cap + 강한 압축 (^0.4)
-  // 1) 150조원(1,500,000억) 이상 종목은 cap → 화면 독점 방지
-  // 2) ^0.4 power → 종목간 면적 차이 크게 압축 (작은 종목도 잘 보임)
+  // 섹터 순서 (finviz 표준)
+  const SECTOR_ORDER = [
+    "IT", "커뮤니케이션", "경기관련소비재", "필수소비재",
+    "에너지", "금융", "헬스케어", "산업재",
+    "소재", "부동산", "유틸리티",
+    "2차전지·신재생", "게임·엔터"
+  ];
+  // value: 큰 종목 cap 200조 + power 0.6 (큰 회사 큰 표현 유지하며 작은 종목도 가시화)
   const root = d3.hierarchy(data)
     .sum(d => {
-      const v = Math.min(d.value || 0, 1500000);
-      return Math.pow(v, 0.4);
+      const v = Math.min(d.value || 0, 2000000);  // 200조 cap
+      return Math.pow(v, 0.6);
     })
-    .sort((a, b) => b.value - a.value);
+    .sort((a, b) => {
+      // 섹터(depth=1)는 finviz 고정 순서, 종목(depth=2)은 value 큰 순
+      if (a.depth === 1 && b.depth === 1) {
+        const ai = SECTOR_ORDER.indexOf(a.data.name);
+        const bi = SECTOR_ORDER.indexOf(b.data.name);
+        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      }
+      return b.value - a.value;
+    });
 
   d3.treemap()
     .size([W, H])
