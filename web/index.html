@@ -9,12 +9,18 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <title>코리아 히트맵 | 코스피 200 실시간 시총 트리맵</title>
-<meta name="description" content="코리아 히트맵 — 한국 KOSPI 200 종목을 시가총액 가중 트리맵으로 한눈에 확인. 섹터별 등락률, 매일 3회 자동 갱신, 종목 클릭 시 네이버 금융 이동.">
-<meta name="keywords" content="코리아 히트맵,코스피 히트맵,KOSPI 히트맵,코스피 시총,섹터 등락,KOSPI 200,주식 시각화,한국 주식 지도,네이버 금융">
-<meta property="og:title" content="코리아 히트맵 — 코스피 200 실시간 시총 트리맵">
-<meta property="og:description" content="코리아 히트맵 — 코스피 200 종목을 시가총액 가중 트리맵으로 한눈에. 매일 3회 자동 갱신.">
+<meta name="description" content="코리아 히트맵 — 한국 주식 한눈에 보기. KOSPI 200 종목 시가총액 가중 트리맵 · 주식 그래프 · 주식 다이어그램 · 섹터별 등락률 실시간 시각화. 주식 시장 한눈에, 종목 클릭 시 네이버 금융 이동.">
+<meta name="keywords" content="주식 그래프,주식 다이어그램,주식 한눈에 보기,주식 시장 한눈에,주식 트리맵,주식 시각화,한국 주식 지도,코스피 그래프,코스피 한눈에,코스피 히트맵,KOSPI 히트맵,코리아 히트맵,코스피 200,KOSPI 200,코스피 시총,섹터 등락,주식 색깔 지도,한국 주식 시장 보기,주식 등락률 시각화,네이버 금융 한눈에">
+<meta property="og:title" content="코리아 히트맵 — 한국 주식 한눈에 · 주식 그래프 · 코스피 200 시각화">
+<meta property="og:description" content="한국 주식 시장을 한눈에. 주식 그래프 · 주식 다이어그램 · 코스피 200 종목 시가총액 가중 트리맵으로 섹터별 등락률을 시각화.">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="코리아 히트맵 — 한국 주식 한눈에 · 주식 그래프">
+<meta name="twitter:description" content="코스피 200 종목 시가총액 가중 트리맵 · 섹터별 등락률 시각화">
+<link rel="canonical" href="https://korea-heatmap.onsecon.workers.dev/">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"코리아 히트맵","alternateName":["주식 그래프","주식 다이어그램","주식 한눈에 보기","코스피 트리맵"],"description":"한국 주식 시장 한눈에 보기 — KOSPI 200 종목 시가총액 가중 트리맵으로 섹터별 등락률을 실시간 시각화하는 주식 그래프 서비스","url":"https://korea-heatmap.onsecon.workers.dev/","applicationCategory":"FinanceApplication","operatingSystem":"Any","inLanguage":"ko","keywords":"주식 그래프, 주식 다이어그램, 주식 한눈에, 코스피 200, 시가총액 트리맵, 섹터 등락, 주식 시각화"}
+</script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -148,9 +154,10 @@
   .pf-pos { color: #5fc285; }
   .pf-neg { color: #cc6868; }
   .sector-label {
-    fill: #d4d4d8; font-weight: 700; font-size: 12px;
-    pointer-events: none; letter-spacing: 0;
+    fill: #ffffff; font-weight: 800; font-size: 13px;
+    pointer-events: none; letter-spacing: -0.01em;
     font-family: 'Noto Sans KR', sans-serif;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
   }
   .ticker-name {
     fill: #fff; font-weight: 700; pointer-events: none;
@@ -365,16 +372,16 @@
     <div class="legend">
       <span class="label lo">−3%</span>
       <span class="swatch" style="background:#e07e7e"></span>
-      <span class="swatch" style="background:#c47070"></span>
+      <span class="swatch" style="background:#cc6868"></span>
       <span class="swatch" style="background:#a85555"></span>
       <span class="swatch" style="background:#7d4040"></span>
       <span class="swatch" style="background:#5a3838"></span>
       <span class="swatch" style="background:#3a3a3a"></span>
       <span class="swatch" style="background:#345a40"></span>
       <span class="swatch" style="background:#3d7a55"></span>
-      <span class="swatch" style="background:#56a070"></span>
+      <span class="swatch" style="background:#4ea670"></span>
       <span class="swatch" style="background:#5fc285"></span>
-      <span class="swatch" style="background:#75c594"></span>
+      <span class="swatch" style="background:#7dd99c"></span>
       <span class="label hi">+3%</span>
     </div>
     <div>© 2026 코리아 히트맵 · 투자판단 책임은 본인에게 있습니다</div>
@@ -406,7 +413,7 @@ function sparklinePath(values, w, h, color) {
 }
 
 function colorFor(pct) {
-  // 파스텔톤 — 8단계, ±10% clamp (한국 변동폭 ±30%까지 가능하므로 명암 다양화)
+  // 파스텔톤 8단계 ±10% clamp
   const c = Math.max(-10, Math.min(10, pct));
   if (c >= 0) {
     if (c < 0.15) return "#2a2a2a";
@@ -454,35 +461,41 @@ function render(data) {
   svg.attr("width", W).attr("height", H);
   svg.selectAll("*").remove();
 
-  // sqrt 가중치: 시총 차이 압축 (삼성전자 17조 vs 작은 종목 5천억 = 35배 → sqrt(35)=5.9배)
-  // 모든 종목이 보일 수 있도록 시각적 균형 우선. 정확한 시총 비율은 tooltip 에서 확인.
   const root = d3.hierarchy(data)
     .sum(d => Math.sqrt(d.value || 0))
     .sort((a, b) => b.value - a.value);
 
   d3.treemap()
     .size([W, H])
-    .paddingTop(d => d.depth === 0 ? 4 : 24)   // 섹터 헤더 더 두껍게
-    .paddingInner(2)                            // 종목간 간격 약간 좁게
-    .paddingOuter(4)
+    .paddingTop(d => d.depth === 0 ? 4 : 28)
+    .paddingInner(2)
+    .paddingOuter(8)
     .tile(d3.treemapSquarify.ratio(1.4))(root);
 
-  // 섹터 배경 + 섹터 외곽선 (구분 명확화)
+  // 섹터 배경 + 외곽선
   svg.selectAll("rect.sector-bg")
     .data(root.descendants().filter(d => d.depth === 1))
     .enter().append("rect").attr("class", "sector-bg")
     .attr("x", d => d.x0).attr("y", d => d.y0)
     .attr("width", d => d.x1 - d.x0).attr("height", d => d.y1 - d.y0)
-    .attr("fill", "#0a0a0a")
-    .attr("stroke", "#1f1f1f")
-    .attr("stroke-width", 1);
+    .attr("fill", "#000")
+    .attr("stroke", "#3a3a3a")
+    .attr("stroke-width", 1.5);
 
-  // 섹터 헤더 (가독성 강화)
+  // 섹터 헤더 띠 (finviz 스타일)
+  svg.selectAll("rect.sector-header-bg")
+    .data(root.descendants().filter(d => d.depth === 1))
+    .enter().append("rect").attr("class", "sector-header-bg")
+    .attr("x", d => d.x0).attr("y", d => d.y0)
+    .attr("width", d => d.x1 - d.x0).attr("height", 22)
+    .attr("fill", "#1a1a1a");
+
+  // 섹터 헤더 글자
   svg.selectAll("text.sector-label")
     .data(root.descendants().filter(d => d.depth === 1))
     .enter().append("text").attr("class", "sector-label")
-    .attr("x", d => d.x0 + 8).attr("y", d => d.y0 + 14)
-    .text(d => (d.x1 - d.x0) < 50 ? "" : d.data.name);
+    .attr("x", d => d.x0 + 10).attr("y", d => d.y0 + 15)
+    .text(d => (d.x1 - d.x0) < 60 ? "" : d.data.name);
 
   const cells = svg.selectAll("g.cell")
     .data(root.leaves()).enter().append("g")
