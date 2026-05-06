@@ -148,8 +148,8 @@
   .pf-pos { color: #5fc285; }
   .pf-neg { color: #cc6868; }
   .sector-label {
-    fill: #9ca3af; font-weight: 700; font-size: 10px;
-    pointer-events: none; letter-spacing: 0.06em;
+    fill: #d4d4d8; font-weight: 700; font-size: 12px;
+    pointer-events: none; letter-spacing: 0;
     font-family: 'Noto Sans KR', sans-serif;
   }
   .ticker-name {
@@ -163,7 +163,7 @@
     font-family: 'Noto Sans KR', sans-serif; font-weight: 500;
   }
   .cell {
-    stroke: #000; stroke-width: 0.5; cursor: pointer;
+    stroke: #000; stroke-width: 1; cursor: pointer;
     transition: stroke 0.06s;
   }
   .cell:hover { stroke: #facc15; stroke-width: 1.5; }
@@ -215,16 +215,17 @@
   }
   /* ====== 반응형 ====== */
   @media (max-width: 1280px) {
-    .ad-sidebar { width: 140px; padding: 10px 8px; }
-    .ad-skyscraper { min-height: 500px; }
-    .ad-rect { display: none; }
+    .ad-sidebar { width: 150px; padding: 10px 8px; }
+    .ad-skyscraper { min-height: 480px; }
+    .ad-rect { min-height: 200px; }
     #portfolio { width: 300px; }
     .index-info { gap: 18px; font-size: 12px; }
   }
   @media (max-width: 1024px) {
     #portfolio { width: 280px; }
-    .ad-sidebar { width: 120px; }
-    .ad-skyscraper { min-height: 400px; }
+    .ad-sidebar { width: 130px; }
+    .ad-skyscraper { min-height: 380px; }
+    .ad-rect { min-height: 180px; }
     .index-info > div:nth-child(2) { display: none; }
     .search { width: 140px; }
   }
@@ -309,13 +310,14 @@
         <div class="ad-placeholder">
           <span class="ad-label">광고</span>
           <span class="ad-size">160 × 600</span>
-          <span class="ad-hint">트래픽 확보 후<br>AdSense / 카카오 애드핏 연결</span>
+          <span class="ad-hint">광고 게시 예정<br>AdSense · 카카오 애드핏</span>
         </div>
       </div>
       <div class="ad-slot ad-rect" data-slot="left-2">
         <div class="ad-placeholder">
           <span class="ad-label">광고</span>
           <span class="ad-size">160 × 250</span>
+          <span class="ad-hint">하단 광고 자리</span>
         </div>
       </div>
     </aside>
@@ -452,31 +454,35 @@ function render(data) {
   svg.attr("width", W).attr("height", H);
   svg.selectAll("*").remove();
 
+  // sqrt 가중치: 시총 차이 압축 (삼성전자 17조 vs 작은 종목 5천억 = 35배 → sqrt(35)=5.9배)
+  // 모든 종목이 보일 수 있도록 시각적 균형 우선. 정확한 시총 비율은 tooltip 에서 확인.
   const root = d3.hierarchy(data)
-    .sum(d => d.value || 0)
+    .sum(d => Math.sqrt(d.value || 0))
     .sort((a, b) => b.value - a.value);
 
   d3.treemap()
     .size([W, H])
-    .paddingTop(d => d.depth === 0 ? 6 : 20)
-    .paddingInner(3)
-    .paddingOuter(6)
+    .paddingTop(d => d.depth === 0 ? 4 : 24)   // 섹터 헤더 더 두껍게
+    .paddingInner(2)                            // 종목간 간격 약간 좁게
+    .paddingOuter(4)
     .tile(d3.treemapSquarify.ratio(1.4))(root);
 
-  // 섹터 배경 (검정)
+  // 섹터 배경 + 섹터 외곽선 (구분 명확화)
   svg.selectAll("rect.sector-bg")
     .data(root.descendants().filter(d => d.depth === 1))
     .enter().append("rect").attr("class", "sector-bg")
     .attr("x", d => d.x0).attr("y", d => d.y0)
     .attr("width", d => d.x1 - d.x0).attr("height", d => d.y1 - d.y0)
-    .attr("fill", "#000");
+    .attr("fill", "#0a0a0a")
+    .attr("stroke", "#1f1f1f")
+    .attr("stroke-width", 1);
 
-  // 섹터 라벨 (인셋)
+  // 섹터 헤더 (가독성 강화)
   svg.selectAll("text.sector-label")
     .data(root.descendants().filter(d => d.depth === 1))
     .enter().append("text").attr("class", "sector-label")
-    .attr("x", d => d.x0 + 6).attr("y", d => d.y0 + 11)
-    .text(d => (d.x1 - d.x0) < 60 ? "" : d.data.name.toUpperCase());
+    .attr("x", d => d.x0 + 8).attr("y", d => d.y0 + 14)
+    .text(d => (d.x1 - d.x0) < 50 ? "" : d.data.name);
 
   const cells = svg.selectAll("g.cell")
     .data(root.leaves()).enter().append("g")
