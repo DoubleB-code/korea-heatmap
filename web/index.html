@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 보안 헤더 (HTTP 헤더는 _headers 파일에서 정식 적용. meta 는 fallback) -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://d3js.org https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self';">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<title>코리아 히트맵 | 코스피 200 실시간 시총 트리맵</title>
+<meta name="description" content="코리아 히트맵 — 한국 KOSPI 200 종목을 시가총액 가중 트리맵으로 한눈에 확인. 섹터별 등락률, 매일 3회 자동 갱신, 종목 클릭 시 네이버 금융 이동.">
+<meta name="keywords" content="코리아 히트맵,코스피 히트맵,KOSPI 히트맵,코스피 시총,섹터 등락,KOSPI 200,주식 시각화,한국 주식 지도,네이버 금융">
+<meta property="og:title" content="코리아 히트맵 — 코스피 200 실시간 시총 트리맵">
+<meta property="og:description" content="코리아 히트맵 — 코스피 200 종목을 시가총액 가중 트리맵으로 한눈에. 매일 3회 자동 갱신.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #000; color: #e8e8e8;
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
+    height: 100%; overflow: hidden;
+    letter-spacing: -0.01em;
+  }
+  #app { display: flex; flex-direction: column; height: 100vh; }
+  header.topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 24px; background: #0a0a0a;
+    border-bottom: 1px solid #1a1a1a; flex-shrink: 0;
+  }
+  .brand { display: flex; align-items: baseline; gap: 14px; }
+  .brand .logo { font-weight: 900; font-size: 18px; letter-spacing: -0.03em; }
+  .brand .logo span { color: #5fc285; font-weight: 700; }
+  .brand .tagline { font-size: 12px; color: #6b7280; font-weight: 400; }
+  .index-info { display: flex; gap: 28px; align-items: center; font-size: 13px; }
+  .index-info .label { color: #6b7280; margin-right: 6px; font-weight: 400; }
+  .index-info .value { font-weight: 700; }
+  .pos { color: #5fc285; }
+  .neg { color: #cc6868; }
+  .controls { display: flex; align-items: center; gap: 10px; }
+  .controls .seg { display: flex; background: #141414; border-radius: 6px; padding: 2px; }
+  .controls .seg button {
+    background: transparent; border: 0; color: #9ca3af;
+    padding: 6px 14px; font-size: 12px; font-weight: 500; cursor: pointer;
+    border-radius: 4px; font-family: inherit; letter-spacing: -0.01em;
+  }
+  .controls .seg button.active { background: #262626; color: #fff; }
+  .controls .seg button:hover:not(.active):not([disabled]) { color: #fff; }
+  .controls .seg button[disabled] { opacity: 0.4; cursor: not-allowed; }
+  .search {
+    background: #141414; border: 1px solid #262626; border-radius: 6px;
+    padding: 7px 12px; color: #e8e8e8; font-size: 12px; width: 200px;
+    font-family: inherit; letter-spacing: -0.01em;
+  }
+  .search:focus { outline: none; border-color: #22c55e; }
+  main { flex: 1; display: flex; overflow: hidden; background: #000; }
+  #treemap { width: 100%; height: 100%; }
+  #treemap-wrap { display: flex; flex-direction: column; }
+  /* 좌측 광고 사이드바 */
+  .ad-sidebar {
+    flex-shrink: 0; width: 180px; padding: 12px 10px; background: #0a0a0a;
+    border-right: 1px solid #1a1a1a; display: flex; flex-direction: column;
+    gap: 12px; overflow-y: auto;
+  }
+  .ad-slot {
+    background: #141414; border: 1px dashed #2a2a2a; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ad-skyscraper { min-height: 600px; }
+  .ad-rect { min-height: 250px; margin-top: auto; }
+  .ad-placeholder {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    color: #4a4a4a; text-align: center; padding: 12px;
+  }
+  .ad-placeholder .ad-label {
+    font-size: 10px; letter-spacing: 0.15em; color: #6b7280;
+    border: 1px solid #262626; padding: 2px 8px; border-radius: 2px;
+  }
+  .ad-placeholder .ad-size { font-size: 11px; color: #4a4a4a; font-weight: 500; }
+  .ad-placeholder .ad-hint { font-size: 10px; color: #4a4a4a; line-height: 1.5; opacity: 0.7; }
+  /* 모바일에서는 광고 사이드바 숨김 */
+  @media (max-width: 900px) {
+    .ad-sidebar { display: none; }
+  }
+  .sector-label {
+    fill: #9ca3af; font-weight: 700; font-size: 10px;
+    pointer-events: none; letter-spacing: 0.06em;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .ticker-name {
+    fill: #fff; font-weight: 700; pointer-events: none;
+    text-anchor: middle; dominant-baseline: middle;
+    font-family: 'Noto Sans KR', sans-serif; letter-spacing: -0.01em;
+  }
+  .ticker-pct {
+    fill: rgba(255,255,255,0.85); pointer-events: none;
+    text-anchor: middle; dominant-baseline: middle;
+    font-family: 'Noto Sans KR', sans-serif; font-weight: 500;
+  }
+  .cell {
+    stroke: #000; stroke-width: 0.5; cursor: pointer;
+    transition: stroke 0.06s;
+  }
+  .cell:hover { stroke: #facc15; stroke-width: 1.5; }
+  .tooltip {
+    position: absolute; pointer-events: none;
+    background: #0e0e0e; border: 1px solid #2a2a2a; border-radius: 6px;
+    padding: 0; font-size: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.8);
+    min-width: 380px; z-index: 100; opacity: 0; transition: opacity 0.06s;
+    font-family: 'Noto Sans KR', sans-serif; overflow: hidden;
+  }
+  .tooltip .tt-header {
+    background: #1a1a1a; padding: 8px 14px; font-size: 10px;
+    color: #9ca3af; font-weight: 700; letter-spacing: 0.06em;
+    border-bottom: 1px solid #262626;
+  }
+  .tooltip .tt-main {
+    display: grid; grid-template-columns: auto 1fr auto auto;
+    gap: 14px; align-items: center; padding: 12px 14px;
+    color: #fff;
+  }
+  .tooltip .tt-main.pos { background: #4ea670; }
+  .tooltip .tt-main.neg { background: #a85555; }
+  .tooltip .tt-main .m-name {
+    font-weight: 900; font-size: 18px; letter-spacing: -0.02em;
+  }
+  .tooltip .tt-main .m-sub { font-size: 10px; opacity: 0.85; }
+  .tooltip .tt-main .m-spark { width: 80px; height: 24px; }
+  .tooltip .tt-main .m-price { font-weight: 700; font-size: 16px; text-align: right; }
+  .tooltip .tt-main .m-change { font-weight: 700; font-size: 16px; text-align: right; min-width: 64px; }
+  .tooltip .tt-peers { padding: 4px 0; }
+  .tooltip .tt-peer {
+    display: grid; grid-template-columns: 110px 1fr 80px 64px;
+    gap: 10px; align-items: center; padding: 6px 14px;
+    font-size: 12px; border-top: 1px solid #1a1a1a;
+  }
+  .tooltip .tt-peer:first-child { border-top: 0; }
+  .tooltip .tt-peer .p-name {
+    font-weight: 600; color: #e8e8e8;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .tooltip .tt-peer .p-spark { width: 60px; height: 18px; }
+  .tooltip .tt-peer .p-price { text-align: right; color: #d4d4d4; font-weight: 500; }
+  .tooltip .tt-peer .p-change { text-align: right; font-weight: 700; }
+  .tooltip .tt-footer {
+    padding: 6px 14px; border-top: 1px solid #262626;
+    color: #facc15; font-size: 10px; font-weight: 500;
+    background: #141414;
+  }
+  footer.statusbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 24px; background: #0a0a0a; border-top: 1px solid #1a1a1a;
+    font-size: 11px; color: #6b7280; flex-shrink: 0;
+    font-weight: 400;
+  }
+  .legend { display: flex; align-items: center; gap: 0; }
+  .legend .swatch { display: inline-block; width: 26px; height: 11px; }
+  .legend .label { font-size: 10px; color: #9ca3af; font-weight: 500; }
+  .legend .label.lo { margin-right: 8px; }
+  .legend .label.hi { margin-left: 8px; }
+  .delay-badge {
+    display: inline-block; padding: 2px 8px; background: #1a1a1a;
+    border-radius: 3px; font-size: 10px; color: #9ca3af; margin-left: 8px;
+    font-weight: 500;
+  }
+  .empty-state {
+    display: flex; align-items: center; justify-content: center;
+    height: 100%; flex-direction: column; gap: 12px; color: #6b7280;
+  }
+  .empty-state code {
+    background: #141414; padding: 4px 8px; border-radius: 4px;
+    color: #22c55e; font-family: monospace;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">코리아<span> 히트맵</span></div>
+      <div class="tagline">코스피 200 시총 가중 트리맵 · 한눈에 보는 한국 시장</div>
+    </div>
+    <div class="index-info" id="index-info">
+      <div><span class="label">기준일</span><span class="value" id="as-of">—</span></div>
+      <div><span class="label">종목 수</span><span class="value" id="stock-count">—</span></div>
+      <div><span class="label">시총합계</span><span class="value" id="total-cap">—</span></div>
+      <div><span class="label">가중 등락률</span><span class="value" id="weighted-change">—</span></div>
+    </div>
+    <div class="controls">
+      <input class="search" id="search" type="text" placeholder="종목 검색 (예: 삼성전자, 005930)" />
+      <div class="seg">
+        <button class="active" data-period="1D">1일</button>
+        <button data-period="1W" disabled title="추후 지원">1주</button>
+        <button data-period="1M" disabled title="추후 지원">1개월</button>
+      </div>
+    </div>
+  </header>
+  <main>
+    <aside id="ad-left" class="ad-sidebar" aria-label="광고 영역">
+      <div class="ad-slot ad-skyscraper" data-slot="left-1">
+        <div class="ad-placeholder">
+          <span class="ad-label">광고</span>
+          <span class="ad-size">160 × 600</span>
+          <span class="ad-hint">트래픽 확보 후<br>AdSense / 카카오 애드핏 연결</span>
+        </div>
+      </div>
+      <div class="ad-slot ad-rect" data-slot="left-2">
+        <div class="ad-placeholder">
+          <span class="ad-label">광고</span>
+          <span class="ad-size">160 × 250</span>
+        </div>
+      </div>
+    </aside>
+    <div id="treemap-wrap" style="position:relative; flex:1; min-width:0;">
+      <svg id="treemap"></svg>
+    </div>
+    <div class="tooltip" id="tooltip"></div>
+    <div class="empty-state" id="empty" style="display:none;">
+      <div>📊 데이터를 불러올 수 없습니다</div>
+      <div>아래 명령으로 데이터를 먼저 생성하세요:</div>
+      <code>python ingest/run.py</code>
+    </div>
+  </main>
+  <footer class="statusbar">
+    <div>
+      <span id="footer-date">—</span>
+      <span class="delay-badge">15분 지연</span>
+      <span style="margin-left:12px;">데이터: PyKRX (KRX) · 분류: 자체 매핑 · 표본: KOSPI 200 · 클릭 → 네이버 금융</span>
+    </div>
+    <div class="legend">
+      <span class="label lo">−3%</span>
+      <span class="swatch" style="background:#e07e7e"></span>
+      <span class="swatch" style="background:#cc6868"></span>
+      <span class="swatch" style="background:#a85555"></span>
+      <span class="swatch" style="background:#7d4040"></span>
+      <span class="swatch" style="background:#5a3838"></span>
+      <span class="swatch" style="background:#3a3a3a"></span>
+      <span class="swatch" style="background:#345a40"></span>
+      <span class="swatch" style="background:#3d7a55"></span>
+      <span class="swatch" style="background:#4ea670"></span>
+      <span class="swatch" style="background:#5fc285"></span>
+      <span class="swatch" style="background:#7dd99c"></span>
+      <span class="label hi">+3%</span>
+    </div>
+    <div>© 2026 코리아 히트맵 · 투자판단 책임은 본인에게 있습니다</div>
+  </footer>
+</div>
+
+<script>
+const svg = d3.select("#treemap");
+const tooltip = d3.select("#tooltip");
+let currentData = null;
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function sparklinePath(values, w, h, color) {
+  if (!values || values.length < 2) return "";
+  const min = Math.min(...values), max = Math.max(...values);
+  const range = max - min || 1;
+  const pad = 2;
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * w;
+    const y = h - pad - ((v - min) / range) * (h - pad * 2);
+    return (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1);
+  }).join(" ");
+  return `<path d="${pts}" fill="none" stroke="${color}" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+}
+
+function colorFor(pct) {
+  // 파스텔톤 — 명암 단계 뚜렷 (밝은 → 어두운)
+  const c = Math.max(-3, Math.min(3, pct));
+  if (c >= 0) {
+    if (c < 0.15) return "#3a3a3a";
+    if (c < 0.5)  return "#345a40";
+    if (c < 1.0)  return "#3d7a55";
+    if (c < 2.0)  return "#4ea670";
+    if (c < 3.0)  return "#5fc285";
+    return "#7dd99c";
+  } else {
+    const a = -c;
+    if (a < 0.15) return "#3a3a3a";
+    if (a < 0.5)  return "#5a3838";
+    if (a < 1.0)  return "#7d4040";
+    if (a < 2.0)  return "#a85555";
+    if (a < 3.0)  return "#cc6868";
+    return "#e07e7e";
+  }
+}
+
+function fmtCap(eok) {
+  if (eok >= 10000) return (eok / 10000).toFixed(1) + "조";
+  return eok.toLocaleString() + "억";
+}
+
+function updateHeader(data) {
+  document.getElementById("as-of").textContent = data.as_of_iso || data.as_of;
+  document.getElementById("stock-count").textContent = data.stock_count + "개";
+  document.getElementById("total-cap").textContent = fmtCap(data.total_market_cap_eok);
+  const wc = data.weighted_change_pct;
+  const wcEl = document.getElementById("weighted-change");
+  wcEl.textContent = (wc >= 0 ? "+" : "") + wc.toFixed(2) + "%";
+  wcEl.className = "value " + (wc >= 0 ? "pos" : "neg");
+  document.getElementById("footer-date").textContent = (data.as_of_iso || data.as_of) + " 기준";
+}
+
+function render(data) {
+  currentData = data;
+  const main = document.querySelector("main");
+  const W = main.clientWidth;
+  const H = main.clientHeight;
+  svg.attr("width", W).attr("height", H);
+  svg.selectAll("*").remove();
+
+  const root = d3.hierarchy(data)
+    .sum(d => d.value || 0)
+    .sort((a, b) => b.value - a.value);
+
+  d3.treemap()
+    .size([W, H])
+    .paddingTop(d => d.depth === 0 ? 4 : 18)
+    .paddingInner(2)
+    .paddingOuter(4)
+    .tile(d3.treemapSquarify.ratio(1.4))(root);
+
+  // 섹터 배경 (검정)
+  svg.selectAll("rect.sector-bg")
+    .data(root.descendants().filter(d => d.depth === 1))
+    .enter().append("rect").attr("class", "sector-bg")
+    .attr("x", d => d.x0).attr("y", d => d.y0)
+    .attr("width", d => d.x1 - d.x0).attr("height", d => d.y1 - d.y0)
+    .attr("fill", "#000");
+
+  // 섹터 라벨 (인셋)
+  svg.selectAll("text.sector-label")
+    .data(root.descendants().filter(d => d.depth === 1))
+    .enter().append("text").attr("class", "sector-label")
+    .attr("x", d => d.x0 + 6).attr("y", d => d.y0 + 11)
+    .text(d => (d.x1 - d.x0) < 60 ? "" : d.data.name.toUpperCase());
+
+  const cells = svg.selectAll("g.cell")
+    .data(root.leaves()).enter().append("g")
+    .attr("class", "cell-g")
+    .attr("transform", d => `translate(${d.x0},${d.y0})`)
+    .style("cursor", "pointer");
+
+  cells.append("rect").attr("class", "cell")
+    .attr("width", d => Math.max(0.5, d.x1 - d.x0))
+    .attr("height", d => Math.max(0.5, d.y1 - d.y0))
+    .attr("fill", d => colorFor(d.data.change))
+    .on("mouseover", function(event, d) {
+      // 호버: 노란 외곽선 + 둥근 모서리 (다른 셀에 영향 없음, 크기 변화 없음)
+      d3.select(this).transition().duration(120)
+        .attr("stroke", "#facc15").attr("stroke-width", 2)
+        .attr("rx", 6).attr("ry", 6);
+    })
+    .on("mousemove", function(event, d) {
+      const sign = d.data.change >= 0 ? "+" : "";
+      const cls = d.data.change >= 0 ? "pos" : "neg";
+      const peers = (d.parent.children || []).slice(0, 5);
+      const priceStr = d.data.price ? d.data.price.toLocaleString() : fmtCap(d.data.value);
+      const peerRows = peers.map(p => {
+        const pSign = p.data.change >= 0 ? "+" : "";
+        const pCls = p.data.change >= 0 ? "pos" : "neg";
+        const pPrice = p.data.price ? p.data.price.toLocaleString() : "—";
+        const pSpark = sparklinePath(p.data.spark || [], 60, 18, p.data.change >= 0 ? "#5fc285" : "#cc6868");
+        return `<div class="tt-peer">
+          <span class="p-name" title="${escapeHtml(p.data.code)}">${escapeHtml(p.data.name)}</span>
+          <svg class="p-spark" viewBox="0 0 60 18">${pSpark}</svg>
+          <span class="p-price">${pPrice}</span>
+          <span class="p-change ${pCls}">${pSign}${p.data.change.toFixed(2)}%</span>
+        </div>`;
+      }).join("");
+      const mainSpark = sparklinePath(d.data.spark || [], 80, 24, "rgba(255,255,255,0.85)");
+      tooltip.html(`
+        <div class="tt-header">${escapeHtml(d.parent.data.name)}</div>
+        <div class="tt-main ${cls}">
+          <div>
+            <div class="m-name">${escapeHtml(d.data.name)}</div>
+            <div class="m-sub">${escapeHtml(d.data.code)}</div>
+          </div>
+          <svg class="m-spark" viewBox="0 0 80 24">${mainSpark}</svg>
+          <div class="m-price">${priceStr}</div>
+          <div class="m-change">${sign}${d.data.change.toFixed(2)}%</div>
+        </div>
+        <div class="tt-peers">${peerRows}</div>
+        <div class="tt-footer">클릭 → 네이버 금융</div>
+      `).style("left", (event.clientX + 14) + "px")
+        .style("top", (event.clientY + 14) + "px")
+        .style("opacity", 1);
+    })
+    .on("mouseleave", function(event, d) {
+      d3.select(this).transition().duration(120)
+        .attr("stroke", "#000").attr("stroke-width", 0.5)
+        .attr("rx", 0).attr("ry", 0);
+      tooltip.style("opacity", 0);
+    })
+    .on("click", function(event, d) {
+      const url = "https://finance.naver.com/item/main.naver?code=" + d.data.code;
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
+
+  cells.each(function(d) {
+    const w = d.x1 - d.x0, h = d.y1 - d.y0;
+    if (w < 28 || h < 16) return;
+    const g = d3.select(this);
+    const fontSize = Math.max(8.5, Math.min(22, Math.sqrt(w * h) / 8));
+    const sign = d.data.change >= 0 ? "+" : "";
+
+    const maxChars = Math.max(2, Math.floor((w - 4) / (fontSize * 0.55)));
+    const displayName = d.data.name.length * fontSize * 0.55 < w - 4
+      ? d.data.name : d.data.name.slice(0, maxChars);
+
+    g.append("text").attr("class", "ticker-name")
+      .attr("x", w / 2).attr("y", h / 2 - fontSize * 0.32)
+      .attr("font-size", fontSize).text(displayName);
+
+    if (h > 28) {
+      g.append("text").attr("class", "ticker-pct")
+        .attr("x", w / 2).attr("y", h / 2 + fontSize * 0.7)
+        .attr("font-size", Math.max(8, fontSize * 0.65))
+        .text(sign + d.data.change.toFixed(2) + "%");
+    }
+  });
+}
+
+fetch("data/treemap.json", { cache: "no-cache" })
+  .then(r => { if (!r.ok) throw new Error("treemap.json not found"); return r.json(); })
+  .then(data => { updateHeader(data); render(data); })
+  .catch(err => { console.error(err); document.getElementById("empty").style.display = "flex"; });
+
+window.addEventListener("resize", () => {
+  if (currentData) requestAnimationFrame(() => render(currentData));
+});
+
+document.getElementById("search").addEventListener("input", e => {
+  const q = e.target.value.trim().toLowerCase();
+  d3.selectAll("g.cell-g").style("opacity", d => {
+    if (!q) return 1;
+    return (d.data.name.toLowerCase().includes(q) || d.data.code.includes(q)) ? 1 : 0.15;
+  });
+});
+</script>
+</body>
+</html>

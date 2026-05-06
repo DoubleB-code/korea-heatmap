@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Disallow: /data/_meta.json
+
+# 악의적 스크래퍼 차단 (User-Agent 기반)
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+Sitemap: /sitemap.xml

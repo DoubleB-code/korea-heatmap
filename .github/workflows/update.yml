@@ -1,0 +1,128 @@
+name: Update KOSPI 200
+
+# 일 3회 고정 갱신 (월~금)
+#   09:30 KST = 00:30 UTC  (시초가 안정화)
+#   13:00 KST = 04:00 UTC  (점심 시간)
+#   16:00 KST = 07:00 UTC  (정규장 마감 + 종가 동시호가 반영)
+#
+# GitHub Actions schedule 은 ±10분 지연·드물게 스킵 가능 (공식 문서 명시).
+# 정밀 운영이 필요해지면 Cloudflare Workers Cron 또는 Fly.io machines 로 마이그레이션.
+
+on:
+  schedule:
+    - cron: '30 0 * * 1-5'   # 09:30 KST
+    - cron: '0 4 * * 1-5'    # 13:00 KST
+    - cron: '0 7 * * 1-5'    # 16:00 KST
+  workflow_dispatch:
+
+concurrency:
+  group: kospi-update
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Run pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+      - name: Run tests (mock-only)
+        run: pytest tests/ --ignore=tests/test_output_schema.py -v
+
+  update:
+    name: Fetch + validate + commit
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Fetch KOSPI 200 (with retry, KST timezone)
+        run: |
+          cd ingest
+          python run.py
+        # 휴장일이면 종료코드 0 으로 SKIP, treemap.json 미변경
+
+      # F2: fetch 직후 validate + schema 테스트 (실패 시 commit 안 됨)
+      - name: Validate output (CI gate)
+        run: python tests/validate_output.py web/data/treemap.json
+
+      - name: Schema test against new data
+        run: pytest tests/test_output_schema.py -v
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/data/treemap.json web/data/treemap.pretty.json web/data/_meta.json || true
+          if ! git diff --cached --quiet; then
+            git commit -m "data: KOSPI 200 snapshot $(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')"
+            git push
+          else
+            echo "변경사항 없음 — commit 생략"
+          fi
+
+  notify-failure:
+    name: Open issue on failure
+    needs: [test, update]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Create / update tracking issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'KOSPI 갱신 실패 — 자동 알림';
+            const body = [
+              '## 자동 알림: KOSPI 200 갱신 실패',
+              '',
+              '- 실행 시각(UTC): ' + new Date().toISOString(),
+              '- Run URL: ' + context.serverUrl + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId,
+              '',
+              '### 영향',
+              '- 서비스는 마지막 정상 커밋된 treemap.json 으로 계속 운영됩니다.',
+              '- 사용자에게 보이는 데이터는 stale 상태가 됩니다.',
+              '',
+              '### 운영자 액션',
+              '- [ ] Actions 로그 확인',
+              '- [ ] PyKRX 차단 의심 시 IP·User-Agent 변경 검토',
+              '- [ ] 연속 3회 실패 시 KIS API 백업 라인 활성화',
+            ].join('\n');
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'auto-alert',
+            });
+            const existing = issues.find(i => i.title === title);
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: existing.number,
+                body: '재발생: ' + context.serverUrl + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: ['auto-alert', 'bug'],
+              });
+            }
