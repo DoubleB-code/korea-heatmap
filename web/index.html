@@ -155,10 +155,14 @@
   .pf-pos { color: #5fc285; }
   .pf-neg { color: #cc6868; }
   .sector-label {
-    fill: #d4d4d4; font-weight: 700; font-size: 11px;
-    pointer-events: none; letter-spacing: 0.18em;
+    fill: #ffffff; font-weight: 800; font-size: 14px;
+    pointer-events: none; letter-spacing: -0.01em;
     font-family: 'Noto Sans KR', sans-serif;
-    text-transform: uppercase;
+  }
+  .sector-pct {
+    font-weight: 700; font-size: 13px;
+    pointer-events: none; letter-spacing: -0.01em;
+    font-family: 'Noto Sans KR', sans-serif;
   }
   .ticker-name {
     fill: #fff; font-weight: 700; pointer-events: none;
@@ -504,7 +508,7 @@ function render(data) {
 
   d3.treemap()
     .size([W, H])
-    .paddingTop(d => d.depth === 0 ? 4 : 32)
+    .paddingTop(d => d.depth === 0 ? 4 : 30)
     .paddingInner(d => d.depth === 0 ? 16 : 1)   // 섹터간 16px 검정 갭, 종목간 1px
     .paddingOuter(d => d.depth === 0 ? 0 : 4)    // 섹터 내부 4px 여백
     .tile(d3.treemapSquarify.ratio(1.4))(root);
@@ -518,20 +522,41 @@ function render(data) {
     .attr("fill", "#0a0a0a")
     .attr("stroke", "none");
 
-  // 섹터 헤더 띠 (검정 배경, 24px)
+  // 섹터 헤더 띠 (어두운 회색, 26px)
   svg.selectAll("rect.sector-header-bg")
     .data(root.descendants().filter(d => d.depth === 1))
     .enter().append("rect").attr("class", "sector-header-bg")
     .attr("x", d => d.x0).attr("y", d => d.y0)
-    .attr("width", d => d.x1 - d.x0).attr("height", 24)
-    .attr("fill", "#000");
+    .attr("width", d => d.x1 - d.x0).attr("height", 26)
+    .attr("fill", "#1a1a1a");
 
-  // 섹터 헤더 글자 (finviz 스타일: 작은 회색 대문자 자간)
+  // 섹터별 가중평균 변동률
+  function _secAvg(d) {
+    const items = d.children || [];
+    let v = 0, c = 0;
+    items.forEach(x => { v += x.value; c += x.value * x.data.change; });
+    return v ? c / v : 0;
+  }
+
+  // 섹터명 (좌측, 큰 흰색)
   svg.selectAll("text.sector-label")
     .data(root.descendants().filter(d => d.depth === 1))
     .enter().append("text").attr("class", "sector-label")
-    .attr("x", d => d.x0 + 8).attr("y", d => d.y0 + 16)
-    .text(d => (d.x1 - d.x0) < 50 ? "" : d.data.name);
+    .attr("x", d => d.x0 + 10).attr("y", d => d.y0 + 17)
+    .text(d => (d.x1 - d.x0) < 80 ? "" : d.data.name);
+
+  // 섹터 변동률 (우측, 색상)
+  svg.selectAll("text.sector-pct")
+    .data(root.descendants().filter(d => d.depth === 1))
+    .enter().append("text").attr("class", "sector-pct")
+    .attr("x", d => d.x1 - 10).attr("y", d => d.y0 + 17)
+    .attr("text-anchor", "end")
+    .attr("fill", d => _secAvg(d) >= 0 ? "#65b282" : "#c47070")
+    .text(d => {
+      if ((d.x1 - d.x0) < 140) return "";
+      const a = _secAvg(d);
+      return (a >= 0 ? "+" : "") + a.toFixed(2) + "%";
+    });
 
   const cells = svg.selectAll("g.cell")
     .data(root.leaves()).enter().append("g")
