@@ -308,6 +308,49 @@
     footer.statusbar { font-size: 9px; padding: 6px 12px; flex-wrap: wrap; gap: 6px; }
     .legend { display: none; }
   }
+  /* ===== 인터스티셜(전면) 광고 ===== */
+  .ad-interstitial {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.92); display: none;
+    align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .ad-interstitial.show { display: flex; }
+  .ad-i-card {
+    background: #0e0e0e; border: 1px solid #2a2a2a; border-radius: 12px;
+    width: min(94vw, 380px); padding: 22px;
+    text-align: center;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.7);
+  }
+  .ad-i-skip-row { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+  .ad-i-skip {
+    font-size: 11px; color: #9ca3af; padding: 6px 12px;
+    background: #1a1a1a; border-radius: 4px; cursor: not-allowed;
+    transition: all 0.15s; user-select: none;
+  }
+  .ad-i-skip.ready { cursor: pointer; color: #fff; background: #2a2a2a; }
+  .ad-i-skip.ready:hover { background: #3a3a3a; }
+  .ad-i-slot {
+    background: #161616; border: 1px dashed #3a3a3a; border-radius: 6px;
+    min-height: 280px; display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+  }
+  .ad-i-placeholder { text-align: center; color: #4a4a4a; }
+  .ad-i-placeholder .ad-i-label {
+    display: inline-block; font-size: 10px; letter-spacing: 0.18em;
+    color: #6b7280; border: 1px solid #262626; padding: 3px 10px;
+    border-radius: 3px; margin-bottom: 12px;
+  }
+  .ad-i-placeholder .ad-i-size { font-size: 12px; color: #6b7280; font-weight: 500; }
+  .ad-i-placeholder .ad-i-hint {
+    font-size: 11px; color: #4a4a4a; line-height: 1.6; margin-top: 12px; opacity: 0.8;
+  }
+  .ad-i-brand {
+    font-size: 13px; color: #9ca3af; font-weight: 500; padding-top: 6px;
+    border-top: 1px solid #1a1a1a;
+  }
+  .ad-i-brand strong { color: #65b282; font-weight: 800; }
+
   footer.statusbar {
     display: flex; align-items: center; justify-content: space-between;
     padding: 8px 24px; background: #0a0a0a; border-top: 1px solid #1a1a1a;
@@ -335,6 +378,22 @@
 </style>
 </head>
 <body>
+  <!-- 인터스티셜(전면) 광고 — 첫 방문 시 5초 노출 -->
+  <div id="ad-interstitial" class="ad-interstitial" role="dialog" aria-label="광고">
+    <div class="ad-i-card">
+      <div class="ad-i-skip-row">
+        <div class="ad-i-skip" id="ad-i-skip">건너뛰기 <span id="ad-i-timer">5</span>초</div>
+      </div>
+      <div class="ad-i-slot" data-slot="interstitial">
+        <div class="ad-i-placeholder">
+          <div class="ad-i-label">광고</div>
+          <div class="ad-i-size">300 × 280</div>
+          <div class="ad-i-hint">광고 게시 예정<br>AdSense · 카카오 애드핏</div>
+        </div>
+      </div>
+      <div class="ad-i-brand"><strong>코리아 히트맵</strong> · 한국 주식 한눈에</div>
+    </div>
+  </div>
 <div id="app">
   <header class="topbar">
     <div class="brand">
@@ -438,6 +497,37 @@
 </div>
 
 <script>
+// ===== 인터스티셜 광고 (첫 방문 또는 1시간 경과 시 노출) =====
+(function () {
+  const KEY = "kh_ad_last_shown";
+  const COOLDOWN_MS = 60 * 60 * 1000; // 1시간
+  const COUNTDOWN_SEC = 5;
+  const last = parseInt(localStorage.getItem(KEY) || "0", 10);
+  if (Date.now() - last < COOLDOWN_MS) return; // 쿨다운 중이면 스킵
+  const modal = document.getElementById("ad-interstitial");
+  const skipBtn = document.getElementById("ad-i-skip");
+  const timerEl = document.getElementById("ad-i-timer");
+  if (!modal || !skipBtn) return;
+  modal.classList.add("show");
+  let remain = COUNTDOWN_SEC;
+  timerEl.textContent = remain;
+  const tick = setInterval(() => {
+    remain -= 1;
+    if (remain <= 0) {
+      clearInterval(tick);
+      skipBtn.classList.add("ready");
+      skipBtn.textContent = "닫기 ✕";
+    } else {
+      timerEl.textContent = remain;
+    }
+  }, 1000);
+  skipBtn.addEventListener("click", () => {
+    if (!skipBtn.classList.contains("ready")) return;
+    modal.classList.remove("show");
+    localStorage.setItem(KEY, String(Date.now()));
+  });
+})();
+
 const svg = d3.select("#treemap");
 const tooltip = d3.select("#tooltip");
 let currentData = null;
