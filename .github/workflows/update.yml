@@ -108,8 +108,9 @@ jobs:
               '',
               '### 운영자 액션',
               '- [ ] Actions 로그 확인',
-              '- [ ] PyKRX 차단 의심 시 IP·User-Agent 변경 검토',
-              '- [ ] 연속 3회 실패 시 KIS API 백업 라인 활성화',
+              '- [ ] FinanceDataReader 응답 형식 변경 의심 시 fdr 버전 점검',
+              '- [ ] 야후 파이낸스 차단 의심 시 KIS API 백업 라인 활성화',
+              '- [ ] 연속 3회 실패 시 수동 트리거(workflow_dispatch)로 재시도',
             ].join('\n');
 
             const { data: issues } = await github.rest.issues.listForRepo({

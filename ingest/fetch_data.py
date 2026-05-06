@@ -1,47 +1,34 @@
 """
-KOSPI 200 일별 스냅샷 수집 (안정화 레이어 적용).
+KOSPI 200 일별 스냅샷 수집 (FinanceDataReader 기반).
+
+PyKRX → FinanceDataReader 전환 이유:
+- KRX가 GitHub Actions IP를 차단해서 PyKRX 작동 불가
+- FinanceDataReader는 야후 파이낸스 + KRX 혼합 — GitHub Actions에서 정상 작동
 
 운영 정책 (한국 영업일 KST 기준):
-    - 09:30  시초가 안정화 직후
-    - 13:00  점심 시간 직후
-    - 16:00  정규장 마감 + 종가 동시호가 반영 직후
-
-안정화 기능:
-    - 재시도(3회) + 지수 백오프 (1s, 2s, 4s)
-    - 영업일 자동 감지 (휴장일이면 직전 영업일 사용)
-    - 휴장일 감지 시 작업 SKIP (commit 안 일어남)
-    - 직전 정상 스냅샷 폴백 (수집 완전 실패 시)
-    - 결과 검증 (모든 종목 시총 > 0, 등락률 절대값 < 30%)
-
-실행:
-    python ingest/fetch_data.py [--date YYYYMMDD] [--dry-run]
+    - 매 30분 갱신 (월~금 09:00 ~ 16:30 KST)
 
 종료 코드:
-    0  성공 (또는 휴장일 SKIP)
-    1  네트워크·KRX 장애 (재시도 후에도 실패)
-    2  데이터 무결성 위반 (수집됐으나 검증 실패)
+    0  성공 또는 휴장일 SKIP
+    1  네트워크 장애
+    2  데이터 무결성 위반
 """
 from __future__ import annotations
 
-import argparse
-import json
 import logging
-import sys
 import time
 from datetime import datetime, timezone, timedelta
 
 KST = timezone(timedelta(hours=9))
 from pathlib import Path
-from typing import Callable, Optional, Tuple, TypeVar
 
-from pykrx import stock
+import FinanceDataReader as fdr
 
 from sectors import classify_sector
 
 # ============================================================
 # 상수
 # ============================================================
-KOSPI200_INDEX = "1028"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = PROJECT_ROOT / "web" / "data"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -52,11 +39,9 @@ META_FILE = OUT_DIR / "_meta.json"
 
 MIN_STOCKS = 150
 MAX_CHANGE_PCT = 30.0
-
 MAX_RETRIES = 3
 BACKOFF_BASE = 1.0
-
-PER_REQUEST_DELAY = 0.02
+PER_REQUEST_DELAY = 0.0  # fdr는 일괄 호출이라 종목별 sleep 불필요
 
 # ============================================================
 # 로깅
@@ -72,11 +57,7 @@ log = logging.getLogger("kospi-heatmap")
 # ============================================================
 # 재시도
 # ============================================================
-T = TypeVar("T")
-
-
 def with_retry(fn, *args, _label="", **kwargs):
-    """함수 호출을 재시도 + 지수 백오프로 감쌈."""
     last_exc = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
@@ -96,126 +77,90 @@ def with_retry(fn, *args, _label="", **kwargs):
 
 
 # ============================================================
-# 영업일
+# 영업일 (로컬 calendar 기반 — 외부 API 호출 없음)
 # ============================================================
 def _local_business_day_fallback():
-    """KRX 호출 실패 시 사용하는 로컬 fallback. 주말이면 직전 금요일."""
     dt = datetime.now(KST)
-    while dt.weekday() >= 5:  # 5=Sat, 6=Sun
+    while dt.weekday() >= 5:
         dt -= timedelta(days=1)
     return dt.strftime("%Y%m%d")
 
 
 def resolve_business_day(requested):
-    """요청일을 영업일로 보정. 반환: (YYYYMMDD, 오늘이 영업일인지).
-    KRX API 호출 실패 시 로컬 calendar fallback."""
+    """요청일 또는 오늘을 영업일로 보정. 외부 API 사용 안 함."""
     today = datetime.now(KST).strftime("%Y%m%d")
-
     if requested:
-        try:
-            nearest = with_retry(
-                stock.get_nearest_business_day_in_a_week,
-                requested,
-                _label="get_nearest_business_day_in_a_week(requested)",
-            )
-            return nearest, True
-        except Exception as exc:
-            log.warning("KRX 영업일 조회 실패 → 요청일 그대로 사용: %s", exc)
-            return requested, True
-
-    try:
-        nearest = with_retry(
-            stock.get_nearest_business_day_in_a_week,
-            _label="get_nearest_business_day_in_a_week(today)",
-        )
-        return nearest, nearest == today
-    except Exception as exc:
-        # KRX 차단·장애 fallback: 로컬 weekday 계산 (주말이면 직전 금요일)
-        fallback = _local_business_day_fallback()
-        log.warning("KRX 영업일 조회 실패 → 로컬 fallback 사용: %s (today=%s, fallback=%s)",
-                    exc, today, fallback)
-        return fallback, fallback == today
+        return requested, True
+    fallback = _local_business_day_fallback()
+    return fallback, fallback == today
 
 
 # ============================================================
-# 수집
+# KOSPI 200 수집 — FinanceDataReader (야후 + KRX 혼합)
 # ============================================================
 def fetch_kospi200(date):
-    log.info("기준일: %s", date)
+    """KOSPI 200 구성종목의 시총·등락률·종가를 받아온다.
 
-    constituents = with_retry(
-        stock.get_index_portfolio_deposit_file,
-        KOSPI200_INDEX, date=date,
-        _label="get_index_portfolio_deposit_file",
-    )
-    log.info("KOSPI 200 구성종목: %d개", len(constituents))
+    fdr.StockListing('KOSPI200') — 구성종목 리스트
+    fdr.StockListing('KOSPI')    — 전체 KOSPI 시세 (Marcap, Close, ChagesRatio 포함)
+    """
+    log.info("기준일: %s (FinanceDataReader)", date)
 
-    cap_df = with_retry(
-        stock.get_market_cap_by_ticker,
-        date, market="KOSPI",
-        _label="get_market_cap_by_ticker",
-    )
-    ohlcv_df = with_retry(
-        stock.get_market_ohlcv_by_ticker,
-        date, market="KOSPI",
-        _label="get_market_ohlcv_by_ticker",
+    # 1) KOSPI 200 구성종목 리스트
+    kospi200 = with_retry(fdr.StockListing, "KOSPI200", _label="StockListing(KOSPI200)")
+    log.info("KOSPI 200 구성종목 받음: %d행", len(kospi200))
+
+    # 2) 전체 KOSPI 시세 (시총·종가·등락률 한 번에)
+    kospi_all = with_retry(fdr.StockListing, "KOSPI", _label="StockListing(KOSPI)")
+    log.info("KOSPI 전체 시세 받음: %d행", len(kospi_all))
+
+    # 3) 컬럼명 정규화
+    def col(df, *candidates):
+        for c in candidates:
+            if c in df.columns:
+                return c
+        return None
+
+    code_col_200 = col(kospi200, "Code", "Symbol")
+    code_col_all = col(kospi_all, "Code", "Symbol")
+    name_col = col(kospi_all, "Name")
+    cap_col = col(kospi_all, "Marcap", "MarketCap")
+    change_col = col(kospi_all, "ChagesRatio", "ChangesRatio", "ChangeRatio")
+    close_col = col(kospi_all, "Close")
+
+    if not all([code_col_200, code_col_all, name_col, cap_col, change_col]):
+        raise RuntimeError(f"필수 컬럼 누락. KOSPI 컬럼: {list(kospi_all.columns)}")
+
+    # 4) KOSPI 200 코드 set (6자리 zero-pad)
+    kospi200_codes = set(
+        str(c).zfill(6) for c in kospi200[code_col_200].astype(str)
     )
 
+    # 5) KOSPI 200 만 필터 + row 변환
     rows = []
-    skipped = []
-
-    for code in constituents:
-        if code not in cap_df.index:
-            skipped.append(code)
+    for _, r in kospi_all.iterrows():
+        code = str(r[code_col_all]).zfill(6)
+        if code not in kospi200_codes:
             continue
-
-        market_cap = int(cap_df.at[code, "시가총액"])
-        if market_cap <= 0:
-            skipped.append(code)
-            continue
-
-        change_pct = None
-        if "등락률" in cap_df.columns:
-            change_pct = float(cap_df.at[code, "등락률"])
-        elif code in ohlcv_df.index and "등락률" in ohlcv_df.columns:
-            change_pct = float(ohlcv_df.at[code, "등락률"])
-
-        if change_pct is None:
-            skipped.append(code)
-            continue
-
         try:
-            name = with_retry(
-                stock.get_market_ticker_name, code,
-                _label=f"get_market_ticker_name({code})",
-            )
+            cap = int(r[cap_col] or 0)
+            change = float(r[change_col] or 0)
+            close = int(r[close_col] or 0) if close_col else 0
+            name = str(r[name_col]) if r[name_col] else code
         except Exception:
-            name = code
-
-        # 종가 (있으면 추가) — 포트폴리오 평가손익 계산용
-        price = None
-        try:
-            if "종가" in cap_df.columns:
-                price = int(cap_df.at[code, "종가"])
-        except Exception:
-            price = None
-
+            continue
+        if cap <= 0:
+            continue
         row = {
             "code": code,
             "name": name,
-            "value": market_cap // 100_000_000,
-            "change": round(change_pct, 2),
+            "value": cap // 100_000_000,  # 억원
+            "change": round(change, 2),
             "sector": classify_sector(code, name),
         }
-        if price and price > 0:
-            row["price"] = price
+        if close > 0:
+            row["price"] = close
         rows.append(row)
 
-        time.sleep(PER_REQUEST_DELAY)
-
-    if skipped:
-        log.warning("데이터 누락 %d건: %s%s",
-                    len(skipped), skipped[:5], "..." if len(skipped) > 5 else "")
-
-    log.info("수집 완료: %d개", len(rows))
+    log.info("수집 완료: %d개 (KOSPI 200 매칭)", len(rows))
     return rows

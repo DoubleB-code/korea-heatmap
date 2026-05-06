@@ -1,4 +1,7 @@
 # 핀 버전 (sha256 해시 검증은 pip install --require-hashes 로 추가 가능)
-pykrx>=1.0.50
-pandas>=2.2.0,<3.0
+# PyKRX 제거 사유: GitHub Actions IP가 KRX에 차단되어 영구히 작동 불가
+# FinanceDataReader 는 야후 파이낸스 + KRX 혼합 — Actions에서 정상 작동
 finance-datareader>=0.9.0
+pandas>=2.2.0,<3.0
+requests>=2.31.0
+lxml>=4.9.0
