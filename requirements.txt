@@ -5,5 +5,5 @@
 #   FinanceDataReader → 한국 종목에 대해 KRX/Naver fchart 호출 (동일 차단 위험)
 #   yfinance         → Yahoo Finance 직접 호출 (GitHub Actions 호환 검증됨)
 yfinance>=0.2.40
-pandas>=2.2.0,<3.0
+pandas>=3.0.2,<4.0
 requests>=2.31.0
