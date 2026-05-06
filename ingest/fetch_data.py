@@ -323,6 +323,8 @@ def fetch_prices(codes):
         raise RuntimeError("yf.download empty result")
 
     out = {}
+    # 진단용 watch list: 이 종목들은 항상 (날짜, 종가) 시퀀스 출력
+    DIAG_WATCH = {"005930", "011790", "336260", "028260", "006800", "000660"}
     sample_logged = 0
     for code in codes:
         sym = to_yf_symbol(code)
@@ -335,21 +337,30 @@ def fetch_prices(codes):
             if len(closes) < 2:
                 continue
 
-            # 진단 로그: 처음 3종목의 (날짜, 종가) 시퀀스 출력
-            if sample_logged < 3:
-                tail = closes.tail(5)
-                log.info(
-                    "  sample %s: %s",
-                    code,
-                    [(str(d.date()), round(float(v), 2)) for d, v in tail.items()],
-                )
-                sample_logged += 1
-
             today_close = float(closes.iloc[-1])
             prev_close = float(closes.iloc[-2])
             if prev_close <= 0:
                 continue
             change = (today_close - prev_close) / prev_close * 100
+
+            # 진단 로그:
+            # 1) 처음 3종목 항상 출력
+            # 2) 의심 watch list 항상 출력
+            # 3) |변동률| > 10% 종목도 출력
+            should_log = (
+                sample_logged < 3
+                or code in DIAG_WATCH
+                or abs(change) > 10
+            )
+            if should_log:
+                tail = closes.tail(5)
+                log.info(
+                    "  diag %s (ch=%+.2f%%): %s",
+                    code, change,
+                    [(str(d.date()), round(float(v), 2)) for d, v in tail.items()],
+                )
+                sample_logged += 1
+
             out[code] = {
                 "today_close": today_close,
                 "prev_close": prev_close,
