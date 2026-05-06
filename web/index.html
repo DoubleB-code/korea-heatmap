@@ -70,27 +70,27 @@
   #treemap { width: 100%; height: 100%; }
   #treemap-wrap { display: flex; flex-direction: column; }
   /* 좌측 광고 사이드바 */
-  .ad-sidebar {
+  .kh-side {
     flex-shrink: 0; width: 180px; padding: 12px 10px; background: #0a0a0a;
     border-right: 1px solid #1a1a1a; display: flex; flex-direction: column;
     gap: 12px; overflow-y: auto;
   }
-  .ad-slot {
+  .kh-cell {
     background: #161616; border: 1px dashed #3a3a3a; border-radius: 4px;
     display: flex; align-items: center; justify-content: center;
   }
-  .ad-skyscraper { min-height: 600px; }
-  .ad-rect { min-height: 250px; margin-top: auto; }
-  .ad-placeholder {
+  .kh-tall { min-height: 600px; }
+  .kh-box { min-height: 250px; margin-top: auto; }
+  .kh-ph {
     display: flex; flex-direction: column; align-items: center; gap: 8px;
     color: #4a4a4a; text-align: center; padding: 12px;
   }
-  .ad-placeholder .ad-label {
+  .kh-ph .kh-tag {
     font-size: 10px; letter-spacing: 0.15em; color: #6b7280;
     border: 1px solid #262626; padding: 2px 8px; border-radius: 2px;
   }
-  .ad-placeholder .ad-size { font-size: 11px; color: #4a4a4a; font-weight: 500; }
-  .ad-placeholder .ad-hint { font-size: 10px; color: #4a4a4a; line-height: 1.5; opacity: 0.7; }
+  .kh-ph .kh-sz { font-size: 11px; color: #4a4a4a; font-weight: 500; }
+  .kh-ph .kh-hint { font-size: 10px; color: #4a4a4a; line-height: 1.5; opacity: 0.7; }
   /* 포트폴리오 토글 버튼 */
   .pf-toggle {
     display: flex; align-items: center; gap: 6px;
@@ -258,17 +258,17 @@
   .modal-cta:hover { background: #75c594; }
   .modal-hint { color: #6b7280; font-size: 11px; text-align: center; margin-top: 8px; }
   @media (max-width: 1280px) {
-    .ad-sidebar { width: 150px; padding: 10px 8px; }
-    .ad-skyscraper { min-height: 480px; }
-    .ad-rect { min-height: 200px; }
+    .kh-side { width: 150px; padding: 10px 8px; }
+    .kh-tall { min-height: 480px; }
+    .kh-box { min-height: 200px; }
     #portfolio { width: 300px; }
     .index-info { gap: 18px; font-size: 12px; }
   }
   @media (max-width: 1024px) {
     #portfolio { width: 280px; }
-    .ad-sidebar { width: 130px; }
-    .ad-skyscraper { min-height: 380px; }
-    .ad-rect { min-height: 180px; }
+    .kh-side { width: 130px; }
+    .kh-tall { min-height: 380px; }
+    .kh-box { min-height: 180px; }
     .index-info > div:nth-child(2) { display: none; }
     .search { width: 140px; }
   }
@@ -279,7 +279,7 @@
     main { overflow: visible; height: auto; }
     #treemap-wrap { min-height: 2800px; height: 2800px; }
     header.topbar { position: sticky; top: 0; z-index: 50; }
-    .ad-sidebar { display: none; }
+    .kh-side { display: none; }
     .brand .tagline { display: none; }
     .brand .logo { font-size: 15px; }
     .index-info { gap: 10px; font-size: 11px; }
@@ -309,47 +309,47 @@
     .legend { display: none; }
   }
   /* ===== 인터스티셜(전면) 광고 ===== */
-  .ad-interstitial {
+  .kh-promo {
     position: fixed; inset: 0; z-index: 1000;
     background: rgba(0,0,0,0.92); display: none;
     align-items: center; justify-content: center;
     backdrop-filter: blur(4px);
   }
-  .ad-interstitial.show { display: flex; }
-  .ad-i-card {
+  .kh-promo.show { display: flex; }
+  .kh-p-card {
     background: #0e0e0e; border: 1px solid #2a2a2a; border-radius: 12px;
     width: min(94vw, 380px); padding: 22px;
     text-align: center;
     box-shadow: 0 24px 60px rgba(0,0,0,0.7);
   }
-  .ad-i-skip-row { display: flex; justify-content: flex-end; margin-bottom: 12px; }
-  .ad-i-skip {
+  .kh-p-skip-row { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+  .kh-p-skip {
     font-size: 11px; color: #9ca3af; padding: 6px 12px;
     background: #1a1a1a; border-radius: 4px; cursor: not-allowed;
     transition: all 0.15s; user-select: none;
   }
-  .ad-i-skip.ready { cursor: pointer; color: #fff; background: #2a2a2a; }
-  .ad-i-skip.ready:hover { background: #3a3a3a; }
-  .ad-i-slot {
+  .kh-p-skip.ready { cursor: pointer; color: #fff; background: #2a2a2a; }
+  .kh-p-skip.ready:hover { background: #3a3a3a; }
+  .kh-p-slot {
     background: #161616; border: 1px dashed #3a3a3a; border-radius: 6px;
     min-height: 280px; display: flex; align-items: center; justify-content: center;
     margin-bottom: 14px;
   }
-  .ad-i-placeholder { text-align: center; color: #4a4a4a; }
-  .ad-i-placeholder .ad-i-label {
+  .kh-p-placeholder { text-align: center; color: #4a4a4a; }
+  .kh-p-placeholder .kh-p-label {
     display: inline-block; font-size: 10px; letter-spacing: 0.18em;
     color: #6b7280; border: 1px solid #262626; padding: 3px 10px;
     border-radius: 3px; margin-bottom: 12px;
   }
-  .ad-i-placeholder .ad-i-size { font-size: 12px; color: #6b7280; font-weight: 500; }
-  .ad-i-placeholder .ad-i-hint {
+  .kh-p-placeholder .kh-p-size { font-size: 12px; color: #6b7280; font-weight: 500; }
+  .kh-p-placeholder .kh-p-hint {
     font-size: 11px; color: #4a4a4a; line-height: 1.6; margin-top: 12px; opacity: 0.8;
   }
-  .ad-i-brand {
+  .kh-p-brand {
     font-size: 13px; color: #9ca3af; font-weight: 500; padding-top: 6px;
     border-top: 1px solid #1a1a1a;
   }
-  .ad-i-brand strong { color: #65b282; font-weight: 800; }
+  .kh-p-brand strong { color: #65b282; font-weight: 800; }
 
   footer.statusbar {
     display: flex; align-items: center; justify-content: space-between;
@@ -379,19 +379,19 @@
 </head>
 <body>
   <!-- 인터스티셜(전면) 광고 — 첫 방문 시 5초 노출 -->
-  <div id="ad-interstitial" class="ad-interstitial" role="dialog" aria-label="광고">
-    <div class="ad-i-card">
-      <div class="ad-i-skip-row">
-        <div class="ad-i-skip" id="ad-i-skip">건너뛰기 <span id="ad-i-timer">5</span>초</div>
+  <div id="kh-promo" class="kh-promo" role="dialog" aria-label="광고">
+    <div class="kh-p-card">
+      <div class="kh-p-skip-row">
+        <div class="kh-p-skip" id="kh-p-skip">건너뛰기 <span id="kh-p-timer">5</span>초</div>
       </div>
-      <div class="ad-i-slot" data-slot="interstitial">
-        <div class="ad-i-placeholder">
-          <div class="ad-i-label">광고</div>
-          <div class="ad-i-size">300 × 280</div>
-          <div class="ad-i-hint">광고 게시 예정<br>AdSense · 카카오 애드핏</div>
+      <div class="kh-p-slot" data-slot="interstitial">
+        <div class="kh-p-placeholder">
+          <div class="kh-p-label">광고</div>
+          <div class="kh-p-size">300 × 280</div>
+          <div class="kh-p-hint">광고 게시 예정<br>AdSense · 카카오 애드핏</div>
         </div>
       </div>
-      <div class="ad-i-brand"><strong>코리아 히트맵</strong> · 한국 주식 한눈에</div>
+      <div class="kh-p-brand"><strong>코리아 히트맵</strong> · 한국 주식 한눈에</div>
     </div>
   </div>
 <div id="app">
@@ -420,19 +420,19 @@
     </div>
   </header>
   <main>
-    <aside id="ad-left" class="ad-sidebar" aria-label="광고 영역">
-      <div class="ad-slot ad-skyscraper" data-slot="left-1">
-        <div class="ad-placeholder">
-          <span class="ad-label">광고</span>
-          <span class="ad-size">160 × 600</span>
-          <span class="ad-hint">광고 게시 예정<br>AdSense · 카카오 애드핏</span>
+    <aside id="kh-left" class="kh-side" aria-label="광고 영역">
+      <div class="kh-cell kh-tall" data-slot="left-1">
+        <div class="kh-ph">
+          <span class="kh-tag">광고</span>
+          <span class="kh-sz">160 × 600</span>
+          <span class="kh-hint">광고 게시 예정<br>AdSense · 카카오 애드핏</span>
         </div>
       </div>
-      <div class="ad-slot ad-rect" data-slot="left-2">
-        <div class="ad-placeholder">
-          <span class="ad-label">광고</span>
-          <span class="ad-size">160 × 250</span>
-          <span class="ad-hint">하단 광고 자리</span>
+      <div class="kh-cell kh-box" data-slot="left-2">
+        <div class="kh-ph">
+          <span class="kh-tag">광고</span>
+          <span class="kh-sz">160 × 250</span>
+          <span class="kh-hint">하단 광고 자리</span>
         </div>
       </div>
     </aside>
@@ -504,9 +504,9 @@
   const COUNTDOWN_SEC = 5;
   const last = parseInt(localStorage.getItem(KEY) || "0", 10);
   if (Date.now() - last < COOLDOWN_MS) return; // 쿨다운 중이면 스킵
-  const modal = document.getElementById("ad-interstitial");
-  const skipBtn = document.getElementById("ad-i-skip");
-  const timerEl = document.getElementById("ad-i-timer");
+  const modal = document.getElementById("kh-promo");
+  const skipBtn = document.getElementById("kh-p-skip");
+  const timerEl = document.getElementById("kh-p-timer");
   if (!modal || !skipBtn) return;
   modal.classList.add("show");
   let remain = COUNTDOWN_SEC;
