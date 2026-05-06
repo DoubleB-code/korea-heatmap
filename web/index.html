@@ -502,8 +502,14 @@ function render(data) {
   svg.attr("width", W).attr("height", H);
   svg.selectAll("*").remove();
 
+  // 섹터 내 비율 기반 + 큰 종목 cap + 강한 압축 (^0.4)
+  // 1) 150조원(1,500,000억) 이상 종목은 cap → 화면 독점 방지
+  // 2) ^0.4 power → 종목간 면적 차이 크게 압축 (작은 종목도 잘 보임)
   const root = d3.hierarchy(data)
-    .sum(d => Math.sqrt(d.value || 0))
+    .sum(d => {
+      const v = Math.min(d.value || 0, 1500000);
+      return Math.pow(v, 0.4);
+    })
     .sort((a, b) => b.value - a.value);
 
   d3.treemap()
