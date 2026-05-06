@@ -106,6 +106,25 @@ def main():
 
     tree = build_hierarchy(date, rows)
 
+    # ─── sparkline 30일 누적 (이전 스냅샷의 spark 배열에 오늘 종가 append) ───
+    try:
+        if OUT_FILE.exists():
+            prev = json.loads(OUT_FILE.read_text(encoding="utf-8"))
+            prev_spark = {}
+            for sec in prev.get("children", []):
+                for s in sec.get("children", []):
+                    if "spark" in s and isinstance(s["spark"], list):
+                        prev_spark[s["code"]] = s["spark"]
+            for sec in tree["children"]:
+                for s in sec["children"]:
+                    if "price" in s:
+                        old_pts = prev_spark.get(s["code"], [])
+                        new_pts = (old_pts + [s["price"]])[-30:]  # 최근 30개 유지
+                        s["spark"] = new_pts
+            log.info("✓ sparkline 누적: %d종목", sum(1 for sec in tree["children"] for s in sec["children"] if s.get("spark")))
+    except Exception as e:
+        log.warning("spark 누적 실패 (무시): %s", e)
+
     try:
         validate_tree(tree)
     except IntegrityError as exc:

@@ -69,7 +69,7 @@
     gap: 12px; overflow-y: auto;
   }
   .ad-slot {
-    background: #141414; border: 1px dashed #2a2a2a; border-radius: 4px;
+    background: #161616; border: 1px dashed #3a3a3a; border-radius: 4px;
     display: flex; align-items: center; justify-content: center;
   }
   .ad-skyscraper { min-height: 600px; }
@@ -84,10 +84,6 @@
   }
   .ad-placeholder .ad-size { font-size: 11px; color: #4a4a4a; font-weight: 500; }
   .ad-placeholder .ad-hint { font-size: 10px; color: #4a4a4a; line-height: 1.5; opacity: 0.7; }
-  /* 모바일에서는 광고 사이드바 숨김 */
-  @media (max-width: 900px) {
-    .ad-sidebar { display: none; }
-  }
   /* 포트폴리오 토글 버튼 */
   .pf-toggle {
     display: flex; align-items: center; gap: 6px;
@@ -228,10 +224,11 @@
   @media (max-width: 1024px) {
     #portfolio { width: 280px; }
     .ad-sidebar { width: 120px; }
+    .ad-skyscraper { min-height: 400px; }
     .index-info > div:nth-child(2) { display: none; }
     .search { width: 140px; }
   }
-  @media (max-width: 900px) {
+  @media (max-width: 700px) {
     .ad-sidebar { display: none; }
     .brand .tagline { display: none; }
     .index-info { gap: 12px; }
