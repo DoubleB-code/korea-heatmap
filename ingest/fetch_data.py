@@ -98,23 +98,43 @@ def with_retry(fn, *args, _label="", **kwargs):
 # ============================================================
 # 영업일
 # ============================================================
+def _local_business_day_fallback():
+    """KRX 호출 실패 시 사용하는 로컬 fallback. 주말이면 직전 금요일."""
+    dt = datetime.now(KST)
+    while dt.weekday() >= 5:  # 5=Sat, 6=Sun
+        dt -= timedelta(days=1)
+    return dt.strftime("%Y%m%d")
+
+
 def resolve_business_day(requested):
-    """요청일을 영업일로 보정. 반환: (YYYYMMDD, 오늘이 영업일인지)."""
+    """요청일을 영업일로 보정. 반환: (YYYYMMDD, 오늘이 영업일인지).
+    KRX API 호출 실패 시 로컬 calendar fallback."""
     today = datetime.now(KST).strftime("%Y%m%d")
 
     if requested:
+        try:
+            nearest = with_retry(
+                stock.get_nearest_business_day_in_a_week,
+                requested,
+                _label="get_nearest_business_day_in_a_week(requested)",
+            )
+            return nearest, True
+        except Exception as exc:
+            log.warning("KRX 영업일 조회 실패 → 요청일 그대로 사용: %s", exc)
+            return requested, True
+
+    try:
         nearest = with_retry(
             stock.get_nearest_business_day_in_a_week,
-            requested,
-            _label="get_nearest_business_day_in_a_week(requested)",
+            _label="get_nearest_business_day_in_a_week(today)",
         )
-        return nearest, True
-
-    nearest = with_retry(
-        stock.get_nearest_business_day_in_a_week,
-        _label="get_nearest_business_day_in_a_week(today)",
-    )
-    return nearest, nearest == today
+        return nearest, nearest == today
+    except Exception as exc:
+        # KRX 차단·장애 fallback: 로컬 weekday 계산 (주말이면 직전 금요일)
+        fallback = _local_business_day_fallback()
+        log.warning("KRX 영업일 조회 실패 → 로컬 fallback 사용: %s (today=%s, fallback=%s)",
+                    exc, today, fallback)
+        return fallback, fallback == today
 
 
 # ============================================================

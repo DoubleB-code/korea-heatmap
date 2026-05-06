@@ -1,3 +1,4 @@
 # 핀 버전 (sha256 해시 검증은 pip install --require-hashes 로 추가 가능)
-pykrx==1.0.45
-pandas==2.2.3
+pykrx>=1.0.50
+pandas>=2.2.0,<3.0
+finance-datareader>=0.9.0
