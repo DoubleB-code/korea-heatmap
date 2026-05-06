@@ -780,9 +780,29 @@ function render(data) {
       tooltip.style("opacity", 0);
     })
     .on("click", function(event, d) {
-      // 클릭 시 즉시 네이버 금융으로 이동
+      // 클릭 시 툴팁 즉시 닫기 + 셀 외곽선 원복 + 네이버 이동
+      tooltip.style("opacity", 0);
+      d3.select(this).attr("stroke", "#000").attr("stroke-width", 0.5).attr("rx", 0).attr("ry", 0);
       window.open("https://finance.naver.com/item/main.naver?code=" + d.data.code, "_blank", "noopener,noreferrer");
     });
+
+  // 외부 클릭/터치 시 툴팁 자동 닫힘 (모바일 hover 잔존 방지)
+  // render() 매번 호출되므로 리스너는 한 번만 등록
+  if (!window.__khTooltipCloseInstalled) {
+    window.__khTooltipCloseInstalled = true;
+    const closeIfOutside = (e) => {
+      if (!e.target.closest("#treemap") && !e.target.closest(".tooltip")) {
+        tooltip.style("opacity", 0);
+      }
+    };
+    document.addEventListener("click", closeIfOutside);
+    document.addEventListener("touchstart", closeIfOutside, { passive: true });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") tooltip.style("opacity", 0);
+    });
+    // 스크롤 시에도 툴팁 닫기 (모바일 스크롤로 화면 뜬 채 잔존 방지)
+    window.addEventListener("scroll", () => tooltip.style("opacity", 0), { passive: true });
+  }
 
   cells.each(function(d) {
     const w = d.x1 - d.x0, h = d.y1 - d.y0;
