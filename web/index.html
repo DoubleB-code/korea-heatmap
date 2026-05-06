@@ -645,8 +645,8 @@ function render(data) {
       tooltip.style("opacity", 0);
     })
     .on("click", function(event, d) {
-      if (typeof openStockModal === 'function') openStockModal(d);
-      else window.open("https://finance.naver.com/item/main.naver?code=" + d.data.code, "_blank", "noopener,noreferrer");
+      // 클릭 시 즉시 네이버 금융으로 이동
+      window.open("https://finance.naver.com/item/main.naver?code=" + d.data.code, "_blank", "noopener,noreferrer");
     });
 
   cells.each(function(d) {
