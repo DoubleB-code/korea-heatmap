@@ -9,17 +9,17 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <title>코리아 히트맵 | 코스피 200 실시간 시총 트리맵</title>
-<meta name="description" content="코리아 히트맵 — 한국 주식 한눈에 보기. KOSPI 200 종목 시가총액 가중 트리맵 · 주식 그래프 · 주식 다이어그램 · 섹터별 등락률 실시간 시각화. 주식 시장 한눈에, 종목 클릭 시 네이버 금융 이동.">
-<meta name="keywords" content="주식 그래프,주식 다이어그램,주식 한눈에 보기,주식 시장 한눈에,주식 트리맵,주식 시각화,한국 주식 지도,코스피 그래프,코스피 한눈에,코스피 히트맵,KOSPI 히트맵,코리아 히트맵,코스피 200,KOSPI 200,코스피 시총,섹터 등락,주식 색깔 지도,한국 주식 시장 보기,주식 등락률 시각화,네이버 금융 한눈에">
-<meta property="og:title" content="코리아 히트맵 — 한국 주식 한눈에 · 주식 그래프 · 코스피 200 시각화">
-<meta property="og:description" content="한국 주식 시장을 한눈에. 주식 그래프 · 주식 다이어그램 · 코스피 200 종목 시가총액 가중 트리맵으로 섹터별 등락률을 시각화.">
+<meta name="description" content="코리아 히트맵 — 한국 주식 한눈에 보기. KOSPI 200 종목 시가총액 가중 트리맵 · 주식 그래프 · 주식 다이어그램 · 섹터별 등락률 실시간 시각화.">
+<meta name="keywords" content="주식 그래프,주식 다이어그램,주식 한눈에 보기,주식 시장 한눈에,주식 트리맵,주식 시각화,한국 주식 지도,코스피 그래프,코스피 한눈에,코스피 히트맵,KOSPI 히트맵,코리아 히트맵,코스피 200,KOSPI 200,코스피 시총,섹터 등락">
+<meta property="og:title" content="코리아 히트맵 — 한국 주식 한눈에 · 주식 그래프 · 코스피 200">
+<meta property="og:description" content="한국 주식 시장 한눈에. 주식 그래프 · 주식 다이어그램 · 코스피 200 시각화.">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="코리아 히트맵 — 한국 주식 한눈에 · 주식 그래프">
-<meta name="twitter:description" content="코스피 200 종목 시가총액 가중 트리맵 · 섹터별 등락률 시각화">
+<meta name="twitter:title" content="코리아 히트맵 — 한국 주식 한눈에">
+<meta name="twitter:description" content="코스피 200 시가총액 가중 트리맵">
 <link rel="canonical" href="https://korea-heatmap.onsecon.workers.dev/">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebApplication","name":"코리아 히트맵","alternateName":["주식 그래프","주식 다이어그램","주식 한눈에 보기","코스피 트리맵"],"description":"한국 주식 시장 한눈에 보기 — KOSPI 200 종목 시가총액 가중 트리맵으로 섹터별 등락률을 실시간 시각화하는 주식 그래프 서비스","url":"https://korea-heatmap.onsecon.workers.dev/","applicationCategory":"FinanceApplication","operatingSystem":"Any","inLanguage":"ko","keywords":"주식 그래프, 주식 다이어그램, 주식 한눈에, 코스피 200, 시가총액 트리맵, 섹터 등락, 주식 시각화"}
+{"@context":"https://schema.org","@type":"WebApplication","name":"코리아 히트맵","alternateName":["주식 그래프","주식 다이어그램","주식 한눈에 보기","코스피 트리맵"],"description":"한국 주식 시장 한눈에 보기 — KOSPI 200 시가총액 가중 트리맵","url":"https://korea-heatmap.onsecon.workers.dev/","applicationCategory":"FinanceApplication","operatingSystem":"Any","inLanguage":"ko"}
 </script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -154,7 +154,7 @@
   .pf-pos { color: #5fc285; }
   .pf-neg { color: #cc6868; }
   .sector-label {
-    fill: #ffffff; font-weight: 800; font-size: 13px;
+    fill: #fff; font-weight: 800; font-size: 13px;
     pointer-events: none; letter-spacing: -0.01em;
     font-family: 'Noto Sans KR', sans-serif;
     text-shadow: 0 1px 2px rgba(0,0,0,0.6);
@@ -221,6 +221,36 @@
     background: #141414;
   }
   /* ====== 반응형 ====== */
+  /* 종목 상세 팝업 모달 */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.78);
+    z-index: 500; display: none; align-items: center; justify-content: center;
+    backdrop-filter: blur(2px);
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal-card {
+    background: #0e0e0e; border: 1px solid #2a2a2a; border-radius: 10px;
+    width: min(92vw, 460px); padding: 22px 24px; color: #e8e8e8;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .modal-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .modal-name { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+  .modal-code { color: #6b7280; font-size: 12px; margin-left: 8px; font-weight: 500; }
+  .modal-close { background: transparent; border: 0; color: #9ca3af; font-size: 24px; cursor: pointer; line-height: 1; }
+  .modal-close:hover { color: #fff; }
+  .modal-pct { font-size: 28px; font-weight: 800; margin-bottom: 14px; }
+  .modal-info { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; padding: 12px 0; border-top: 1px solid #1f1f1f; border-bottom: 1px solid #1f1f1f; margin-bottom: 14px; font-size: 13px; }
+  .modal-info .k { color: #9ca3af; }
+  .modal-info .v { font-weight: 700; text-align: right; }
+  .modal-spark { width: 100%; height: 80px; margin: 6px 0 14px; }
+  .modal-cta {
+    display: block; width: 100%; padding: 12px; background: #65b282; color: #000;
+    border-radius: 6px; text-align: center; font-weight: 800; font-size: 14px;
+    text-decoration: none; transition: background 0.1s;
+  }
+  .modal-cta:hover { background: #75c594; }
+  .modal-hint { color: #6b7280; font-size: 11px; text-align: center; margin-top: 8px; }
   @media (max-width: 1280px) {
     .ad-sidebar { width: 150px; padding: 10px 8px; }
     .ad-skyscraper { min-height: 480px; }
@@ -239,10 +269,16 @@
   @media (max-width: 700px) {
     .ad-sidebar { display: none; }
     .brand .tagline { display: none; }
-    .index-info { gap: 12px; }
+    .brand .logo { font-size: 15px; }
+    .index-info { gap: 10px; font-size: 11px; }
     .index-info > div:nth-child(3) { display: none; }
     .controls .seg { display: none; }
-    .search { width: 120px; }
+    .search { width: 110px; padding: 6px 10px; font-size: 11px; }
+    .pf-toggle { padding: 6px 10px; font-size: 11px; }
+    .sector-label { font-size: 11px; }
+    .modal-card { width: 92vw; padding: 16px 18px; }
+    .modal-name { font-size: 16px; }
+    .modal-pct { font-size: 22px; }
     /* 포트폴리오 모바일에서는 오버레이 모드 */
     #portfolio:not(.hidden) {
       position: fixed; top: 0; right: 0; bottom: 0;
@@ -367,7 +403,7 @@
     <div>
       <span id="footer-date">—</span>
       <span class="delay-badge">실시간</span>
-      <span style="margin-left:12px;">데이터: Yahoo Finance (yfinance) · 분류: 자체 매핑 · 표본: KOSPI 200 · 클릭 → 네이버 금융</span>
+      <span style="margin-left:12px;">데이터: Yahoo Finance (yfinance) · 분류: 자체 매핑 · 클릭 → 종목 정보 팝업</span>
     </div>
     <div class="legend">
       <span class="label lo">−3%</span>
@@ -413,7 +449,6 @@ function sparklinePath(values, w, h, color) {
 }
 
 function colorFor(pct) {
-  // 파스텔톤 8단계 ±10% clamp
   const c = Math.max(-10, Math.min(10, pct));
   if (c >= 0) {
     if (c < 0.15) return "#2a2a2a";
@@ -468,21 +503,17 @@ function render(data) {
   d3.treemap()
     .size([W, H])
     .paddingTop(d => d.depth === 0 ? 4 : 28)
-    .paddingInner(2)
-    .paddingOuter(8)
+    .paddingInner(2).paddingOuter(8)
     .tile(d3.treemapSquarify.ratio(1.4))(root);
 
-  // 섹터 배경 + 외곽선
   svg.selectAll("rect.sector-bg")
     .data(root.descendants().filter(d => d.depth === 1))
     .enter().append("rect").attr("class", "sector-bg")
     .attr("x", d => d.x0).attr("y", d => d.y0)
     .attr("width", d => d.x1 - d.x0).attr("height", d => d.y1 - d.y0)
     .attr("fill", "#000")
-    .attr("stroke", "#3a3a3a")
-    .attr("stroke-width", 1.5);
+    .attr("stroke", "#3a3a3a").attr("stroke-width", 1.5);
 
-  // 섹터 헤더 띠 (finviz 스타일)
   svg.selectAll("rect.sector-header-bg")
     .data(root.descendants().filter(d => d.depth === 1))
     .enter().append("rect").attr("class", "sector-header-bg")
@@ -490,7 +521,6 @@ function render(data) {
     .attr("width", d => d.x1 - d.x0).attr("height", 22)
     .attr("fill", "#1a1a1a");
 
-  // 섹터 헤더 글자
   svg.selectAll("text.sector-label")
     .data(root.descendants().filter(d => d.depth === 1))
     .enter().append("text").attr("class", "sector-label")
@@ -721,6 +751,62 @@ window.render = function(data) {
 
 pfRender();
 
+// ===== 종목 상세 모달 =====
+const modal = document.getElementById('stock-modal');
+const mClose = document.getElementById('m-close');
+function openStockModal(d) {
+  const data = d.data;
+  document.getElementById('m-name').textContent = data.name;
+  document.getElementById('m-code').textContent = data.code;
+  document.getElementById('m-code2').textContent = data.code;
+  const pct = data.change;
+  const pctEl = document.getElementById('m-pct');
+  pctEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+  pctEl.style.color = pct >= 0 ? '#65b282' : '#c47070';
+  document.getElementById('m-price').textContent = data.price ? data.price.toLocaleString() + '원' : '—';
+  document.getElementById('m-cap').textContent = fmtCap(data.value);
+  document.getElementById('m-sector').textContent = (d.parent && d.parent.data) ? d.parent.data.name : '—';
+  // sparkline
+  const spark = data.spark || [];
+  const svgEl = document.getElementById('m-spark');
+  svgEl.innerHTML = '';
+  if (spark.length >= 2) {
+    const min = Math.min(...spark), max = Math.max(...spark), range = (max - min) || 1;
+    const n = spark.length;
+    const pts = spark.map((v, i) => `${(i / (n - 1)) * 300},${80 - ((v - min) / range) * 70 - 5}`).join(' ');
+    const color = spark[spark.length - 1] >= spark[0] ? '#65b282' : '#c47070';
+    svgEl.innerHTML = `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5"/>`;
+  } else {
+    svgEl.innerHTML = '<text x="150" y="44" fill="#4a4a4a" font-size="11" text-anchor="middle">차트 데이터 누적 중</text>';
+  }
+  // 네이버 링크
+  document.getElementById('m-cta').href = `https://finance.naver.com/item/main.naver?code=${data.code}`;
+  modal.classList.add('show');
+}
+function closeStockModal() { modal.classList.remove('show'); }
+mClose.addEventListener('click', closeStockModal);
+modal.addEventListener('click', (e) => { if (e.target === modal) closeStockModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeStockModal(); });
+
 </script>
+
+  <div id="stock-modal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div><span class="modal-name" id="m-name">—</span><span class="modal-code" id="m-code">—</span></div>
+        <button class="modal-close" id="m-close" aria-label="닫기">×</button>
+      </div>
+      <div class="modal-pct" id="m-pct">—</div>
+      <div class="modal-info">
+        <span class="k">현재가</span><span class="v" id="m-price">—</span>
+        <span class="k">시가총액</span><span class="v" id="m-cap">—</span>
+        <span class="k">섹터</span><span class="v" id="m-sector">—</span>
+        <span class="k">코드</span><span class="v" id="m-code2">—</span>
+      </div>
+      <svg class="modal-spark" id="m-spark" viewBox="0 0 300 80" preserveAspectRatio="none"></svg>
+      <a class="modal-cta" id="m-cta" target="_blank" rel="noopener">네이버 증권에서 더 보기 →</a>
+      <div class="modal-hint">한번 더 누르면 네이버 증권으로 이동합니다</div>
+    </div>
+  </div>
 </body>
 </html>

@@ -2,14 +2,15 @@ User-agent: *
 Allow: /
 Disallow: /data/_meta.json
 
-# 악의적 스크래퍼 차단 (User-Agent 기반)
-User-agent: AhrefsBot
-Disallow: /
+# 한국 검색엔진 명시적 허용
+User-agent: Yeti
+Allow: /
 
-User-agent: SemrushBot
-Disallow: /
+User-agent: Daum
+Allow: /
 
-User-agent: MJ12bot
-Disallow: /
+User-agent: NaverBot
+Allow: /
 
-Sitemap: /sitemap.xml
+# 사이트맵
+Sitemap: https://korea-heatmap.onsecon.workers.dev/sitemap.xml
