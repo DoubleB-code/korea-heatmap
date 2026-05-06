@@ -41,8 +41,8 @@
   .index-info { display: flex; gap: 28px; align-items: center; font-size: 13px; }
   .index-info .label { color: #6b7280; margin-right: 6px; font-weight: 400; }
   .index-info .value { font-weight: 700; }
-  .pos { color: #5fc285; }
-  .neg { color: #cc6868; }
+  .pos { color: #65b282; }
+  .neg { color: #c47070; }
   .controls { display: flex; align-items: center; gap: 10px; }
   .controls .seg { display: flex; background: #141414; border-radius: 6px; padding: 2px; }
   .controls .seg button {
@@ -363,16 +363,16 @@
     <div class="legend">
       <span class="label lo">−3%</span>
       <span class="swatch" style="background:#e07e7e"></span>
-      <span class="swatch" style="background:#cc6868"></span>
+      <span class="swatch" style="background:#c47070"></span>
       <span class="swatch" style="background:#a85555"></span>
       <span class="swatch" style="background:#7d4040"></span>
       <span class="swatch" style="background:#5a3838"></span>
       <span class="swatch" style="background:#3a3a3a"></span>
       <span class="swatch" style="background:#345a40"></span>
       <span class="swatch" style="background:#3d7a55"></span>
-      <span class="swatch" style="background:#4ea670"></span>
+      <span class="swatch" style="background:#56a070"></span>
       <span class="swatch" style="background:#5fc285"></span>
-      <span class="swatch" style="background:#7dd99c"></span>
+      <span class="swatch" style="background:#75c594"></span>
       <span class="label hi">+3%</span>
     </div>
     <div>© 2026 코리아 히트맵 · 투자판단 책임은 본인에게 있습니다</div>
@@ -404,23 +404,27 @@ function sparklinePath(values, w, h, color) {
 }
 
 function colorFor(pct) {
-  // 파스텔톤 — 명암 단계 뚜렷 (밝은 → 어두운)
-  const c = Math.max(-3, Math.min(3, pct));
+  // 파스텔톤 — 8단계, ±10% clamp (한국 변동폭 ±30%까지 가능하므로 명암 다양화)
+  const c = Math.max(-10, Math.min(10, pct));
   if (c >= 0) {
-    if (c < 0.15) return "#3a3a3a";
-    if (c < 0.5)  return "#345a40";
-    if (c < 1.0)  return "#3d7a55";
-    if (c < 2.0)  return "#4ea670";
-    if (c < 3.0)  return "#5fc285";
-    return "#7dd99c";
+    if (c < 0.15) return "#2a2a2a";
+    if (c < 0.5)  return "#2c4a36";
+    if (c < 1.0)  return "#33623f";
+    if (c < 2.0)  return "#3d7a4d";
+    if (c < 3.5)  return "#4a8e60";
+    if (c < 5.0)  return "#56a070";
+    if (c < 8.0)  return "#65b282";
+    return "#75c594";
   } else {
     const a = -c;
-    if (a < 0.15) return "#3a3a3a";
-    if (a < 0.5)  return "#5a3838";
-    if (a < 1.0)  return "#7d4040";
-    if (a < 2.0)  return "#a85555";
-    if (a < 3.0)  return "#cc6868";
-    return "#e07e7e";
+    if (a < 0.15) return "#2a2a2a";
+    if (a < 0.5)  return "#4d3232";
+    if (a < 1.0)  return "#663838";
+    if (a < 2.0)  return "#7d4242";
+    if (a < 3.5)  return "#955050";
+    if (a < 5.0)  return "#ad5d5d";
+    if (a < 8.0)  return "#c47070";
+    return "#d68585";
   }
 }
 
