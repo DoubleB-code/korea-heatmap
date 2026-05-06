@@ -4,80 +4,80 @@
   "as_of_iso": "2026-05-06",
   "delay_minutes": 15,
   "stock_count": 159,
-  "total_market_cap_eok": 54133555,
-  "weighted_change_pct": 8.405,
+  "total_market_cap_eok": 54188950,
+  "weighted_change_pct": 8.576,
   "sectors": [
     {
       "name": "IT",
       "stock_count": 12,
-      "total_value": 32858846,
-      "weighted_change": 12.44
+      "total_value": 32893596,
+      "weighted_change": 12.65
     },
     {
       "name": "산업재",
       "stock_count": 30,
-      "total_value": 6872334,
-      "weighted_change": 2.184
+      "total_value": 6874248,
+      "weighted_change": 2.204
     },
     {
       "name": "금융",
       "stock_count": 22,
-      "total_value": 4035668,
-      "weighted_change": 5.927
+      "total_value": 4038848,
+      "weighted_change": 6.027
     },
     {
       "name": "경기관련소비재",
       "stock_count": 17,
-      "total_value": 2781260,
-      "weighted_change": 1.397
+      "total_value": 2783070,
+      "weighted_change": 1.579
     },
     {
       "name": "소재",
       "stock_count": 21,
-      "total_value": 1598751,
-      "weighted_change": 2.89
+      "total_value": 1602891,
+      "weighted_change": 3.088
     },
     {
       "name": "2차전지·신재생",
       "stock_count": 4,
-      "total_value": 1524342,
-      "weighted_change": 3.854
+      "total_value": 1527779,
+      "weighted_change": 4.103
     },
     {
       "name": "헬스케어",
       "stock_count": 13,
-      "total_value": 1421223,
-      "weighted_change": -0.88
+      "total_value": 1421294,
+      "weighted_change": -0.898
     },
     {
       "name": "커뮤니케이션",
       "stock_count": 6,
-      "total_value": 935866,
-      "weighted_change": -1.597
+      "total_value": 936940,
+      "weighted_change": -1.487
     },
     {
       "name": "필수소비재",
       "stock_count": 22,
-      "total_value": 853388,
-      "weighted_change": -2.672
+      "total_value": 853725,
+      "weighted_change": -2.691
     },
     {
       "name": "에너지",
       "stock_count": 3,
-      "total_value": 589252,
-      "weighted_change": -2.775
+      "total_value": 593382,
+      "weighted_change": -2.072
     },
     {
       "name": "유틸리티",
       "stock_count": 5,
-      "total_value": 337836,
-      "weighted_change": 0.971
+      "total_value": 338569,
+      "weighted_change": 1.195
     },
     {
       "name": "게임·엔터",
       "stock_count": 4,
-      "total_value": 324789,
-      "weighted_change": -2.31
+      "total_value": 324608,
+      "weighted_change": -2.139
     }
   ],
   "children": [
@@ -87,25 +87,25 @@
         {
           "code": "005930",
           "name": "삼성전자",
-          "value": 17532723,
-          "change": 14.84
+          "value": 17581972,
+          "change": 15.27
         },
         {
           "code": "000660",
           "name": "SK하이닉스",
-          "value": 11395785,
-          "change": 11.13
+          "value": 11381611,
+          "change": 11.06
         },
         {
           "code": "402340",
           "name": "SK스퀘어",
-          "value": 1443299,
-          "change": 10.49
+          "value": 1440663,
+          "change": 10.29
         },
         {
           "code": "009150",
           "name": "삼성전기",
-          "value": 695034,
+          "value": 695790,
           "change": 0.22
         },
         {
@@ -117,38 +117,38 @@
         {
           "code": "042700",
           "name": "한미반도체",
-          "value": 366132,
-          "change": 1.98
+          "value": 367081,
+          "change": 2.38
         },
         {
           "code": "034730",
           "name": "SK",
           "value": 285695,
-          "change": 9.99
+          "change": 10.2
         },
         {
           "code": "066570",
           "name": "LG전자",
-          "value": 278381,
-          "change": 8.03
+          "value": 279102,
+          "change": 8.24
         },
         {
           "code": "011070",
           "name": "LG이노텍",
-          "value": 148849,
-          "change": 5.71
+          "value": 149559,
+          "change": 6.39
         },
         {
           "code": "000990",
           "name": "DB하이텍",
-          "value": 65482,
-          "change": 0.56
+          "value": 64557,
+          "change": -0.74
         },
         {
           "code": "034220",
           "name": "LG디스플레이",
-          "value": 63750,
-          "change": 3.49
+          "value": 63850,
+          "change": 3.74
         },
         {
           "code": "012510",
@@ -164,56 +164,56 @@
         {
           "code": "034020",
           "name": "두산에너빌리티",
-          "value": 813616,
-          "change": 0.08
+          "value": 814894,
+          "change": 0.24
         },
         {
           "code": "012450",
           "name": "한화에어로스페이스",
-          "value": 742406,
-          "change": -1.5
+          "value": 743949,
+          "change": -1.3
         },
         {
           "code": "329180",
           "name": "HD현대중공업",
-          "value": 684347,
-          "change": -3.97
+          "value": 683297,
+          "change": -4.26
         },
         {
           "code": "028260",
           "name": "삼성물산",
-          "value": 621813,
-          "change": 18.75
+          "value": 620177,
+          "change": 18.59
         },
         {
           "code": "267260",
           "name": "HD현대일렉트릭",
           "value": 498858,
-          "change": 6.77
+          "change": 6.7
         },
         {
           "code": "298040",
           "name": "효성중공업",
-          "value": 430109,
-          "change": 9.25
+          "value": 429085,
+          "change": 8.99
         },
         {
           "code": "042660",
           "name": "한화오션",
-          "value": 400409,
-          "change": -1.65
+          "value": 401635,
+          "change": -1.43
         },
         {
           "code": "009540",
           "name": "HD한국조선해양",
-          "value": 321751,
-          "change": -3.09
+          "value": 322812,
+          "change": -2.77
         },
         {
           "code": "000150",
           "name": "두산",
-          "value": 306668,
-          "change": 5.57
+          "value": 305816,
+          "change": 5.4
         },
         {
           "code": "010140",
@@ -224,8 +224,8 @@
         {
           "code": "272210",
           "name": "한화시스템",
-          "value": 229440,
-          "change": 2.51
+          "value": 229627,
+          "change": 2.59
         },
         {
           "code": "011200",
@@ -242,20 +242,20 @@
         {
           "code": "047810",
           "name": "한국항공우주",
-          "value": 172238,
-          "change": -1.78
+          "value": 172530,
+          "change": -1.67
         },
         {
           "code": "086280",
           "name": "현대글로비스",
-          "value": 165750,
-          "change": -2.0
+          "value": 166125,
+          "change": -1.77
         },
         {
           "code": "047040",
           "name": "대우건설",
           "value": 132510,
-          "change": 0.31
+          "change": 0.47
         },
         {
           "code": "000880",
@@ -266,38 +266,38 @@
         {
           "code": "028050",
           "name": "삼성E&A",
-          "value": 104174,
-          "change": -3.45
+          "value": 104272,
+          "change": -3.09
         },
         {
           "code": "003490",
           "name": "대한항공",
-          "value": 90855,
-          "change": 0.41
+          "value": 91040,
+          "change": 0.61
         },
         {
           "code": "180640",
           "name": "한진칼",
-          "value": 74156,
-          "change": -1.96
+          "value": 74291,
+          "change": -1.69
         },
         {
           "code": "241560",
           "name": "두산밥캣",
           "value": 69679,
-          "change": -1.49
+          "change": -1.62
         },
         {
           "code": "454910",
           "name": "두산로보틱스",
-          "value": 67672,
-          "change": -3.25
+          "value": 67736,
+          "change": -3.06
         },
         {
           "code": "004800",
           "name": "효성",
-          "value": 42964,
-          "change": 16.06
+          "value": 43047,
+          "change": 16.74
         },
         {
           "code": "006360",
@@ -309,37 +309,37 @@
           "code": "012750",
           "name": "에스원",
           "value": 24918,
-          "change": -6.0
+          "change": -5.75
         },
         {
           "code": "000120",
           "name": "CJ대한통운",
-          "value": 19905,
-          "change": -1.48
+          "value": 19885,
+          "change": -1.58
         },
         {
           "code": "001120",
           "name": "LX인터내셔널",
-          "value": 17894,
+          "value": 17876,
           "change": -4.97
         },
         {
           "code": "020560",
           "name": "아시아나항공",
           "value": 14413,
-          "change": -0.43
+          "change": 0.0
         },
         {
           "code": "001740",
           "name": "SK네트웍스",
-          "value": 14253,
-          "change": 0.76
+          "value": 14231,
+          "change": 0.61
         },
         {
           "code": "005430",
           "name": "한국공항",
-          "value": 1932,
-          "change": 7.67
+          "value": 1941,
+          "change": 8.18
         }
       ]
     },
@@ -356,85 +356,85 @@
           "code": "032830",
           "name": "삼성생명",
           "value": 546805,
-          "change": 14.91
+          "change": 15.09
         },
         {
           "code": "006800",
           "name": "미래에셋증권",
-          "value": 495688,
+          "value": 495106,
           "change": 21.19
         },
         {
           "code": "055550",
           "name": "신한지주",
-          "value": 464211,
-          "change": -0.31
+          "value": 464686,
+          "change": -0.2
         },
         {
           "code": "086790",
           "name": "하나금융지주",
-          "value": 339102,
-          "change": -0.16
+          "value": 339638,
+          "change": 0.0
         },
         {
           "code": "316140",
           "name": "우리금융지주",
-          "value": 240146,
+          "value": 239780,
           "change": -1.35
         },
         {
           "code": "138040",
           "name": "메리츠금융지주",
-          "value": 185541,
-          "change": -0.79
+          "value": 186036,
+          "change": -0.62
         },
         {
           "code": "024110",
           "name": "기업은행",
-          "value": 173041,
-          "change": -1.81
+          "value": 172642,
+          "change": -2.04
         },
         {
           "code": "071050",
           "name": "한국금융지주",
-          "value": 164094,
-          "change": 7.44
+          "value": 165554,
+          "change": 7.82
         },
         {
           "code": "016360",
           "name": "삼성증권",
           "value": 135378,
-          "change": 9.93
+          "change": 9.86
         },
         {
           "code": "039490",
           "name": "키움증권",
-          "value": 124675,
-          "change": 14.08
+          "value": 125711,
+          "change": 15.03
         },
         {
           "code": "323410",
           "name": "카카오뱅크",
-          "value": 119114,
-          "change": 2.46
+          "value": 119471,
+          "change": 2.66
         },
         {
           "code": "005830",
           "name": "DB손해보험",
-          "value": 98333,
-          "change": -2.79
+          "value": 98424,
+          "change": -2.7
         },
         {
           "code": "377300",
           "name": "카카오페이",
-          "value": 83162,
-          "change": 10.0
+          "value": 83974,
+          "change": 10.71
         },
         {
           "code": "138930",
           "name": "BNK금융지주",
-          "value": 56727,
-          "change": 0.38
+          "value": 56293,
+          "change": -0.33
         },
         {
           "code": "029780",
@@ -451,32 +451,32 @@
         {
           "code": "088350",
           "name": "한화생명",
-          "value": 39673,
-          "change": 4.76
+          "value": 39523,
+          "change": 4.37
         },
         {
           "code": "139130",
           "name": "DGB금융지주",
-          "value": 30647,
-          "change": -1.4
+          "value": 30598,
+          "change": -1.3
         },
         {
           "code": "001450",
           "name": "현대해상",
-          "value": 24545,
-          "change": -0.96
+          "value": 24506,
+          "change": -1.12
         },
         {
           "code": "003690",
           "name": "코리안리",
-          "value": 21330,
+          "value": 21312,
           "change": -0.9
         },
         {
           "code": "030610",
           "name": "교보증권",
-          "value": 17923,
-          "change": 7.95
+          "value": 17878,
+          "change": 7.68
         }
       ]
     },
@@ -486,38 +486,38 @@
         {
           "code": "005380",
           "name": "현대차",
-          "value": 1440087,
-          "change": 2.04
+          "value": 1442705,
+          "change": 2.41
         },
         {
           "code": "000270",
           "name": "기아",
-          "value": 603194,
+          "value": 602805,
           "change": 0.78
         },
         {
           "code": "012330",
           "name": "현대모비스",
-          "value": 388827,
-          "change": 0.93
+          "value": 389273,
+          "change": 1.04
         },
         {
           "code": "161390",
           "name": "한국타이어앤테크놀로지",
-          "value": 72827,
+          "value": 72705,
           "change": -2.93
         },
         {
           "code": "018880",
           "name": "한온시스템",
-          "value": 56539,
-          "change": 13.61
+          "value": 55718,
+          "change": 11.96
         },
         {
           "code": "111770",
           "name": "영원무역",
-          "value": 34686,
-          "change": -4.8
+          "value": 34643,
+          "change": -4.44
         },
         {
           "code": "035250",
@@ -529,7 +529,7 @@
           "code": "383220",
           "name": "F&F",
           "value": 29804,
-          "change": 3.39
+          "change": 3.66
         },
         {
           "code": "204320",
@@ -540,26 +540,26 @@
         {
           "code": "008770",
           "name": "호텔신라",
-          "value": 24188,
-          "change": -1.39
+          "value": 24226,
+          "change": -1.23
         },
         {
           "code": "011210",
           "name": "현대위아",
-          "value": 21650,
-          "change": -1.81
+          "value": 21703,
+          "change": -1.57
         },
         {
           "code": "081660",
           "name": "휠라홀딩스",
-          "value": 20785,
+          "value": 20812,
           "change": -2.97
         },
         {
           "code": "114090",
           "name": "GKL",
-          "value": 7391,
-          "change": -3.39
+          "value": 7373,
+          "change": -3.72
         },
         {
           "code": "002350",
@@ -576,14 +576,14 @@
         {
           "code": "031430",
           "name": "신세계인터내셔날",
-          "value": 4979,
-          "change": -3.3
+          "value": 4996,
+          "change": -2.96
         },
         {
           "code": "060980",
           "name": "HL홀딩스",
-          "value": 3822,
-          "change": -2.66
+          "value": 3826,
+          "change": -2.54
         }
       ]
     },
@@ -593,20 +593,20 @@
         {
           "code": "005490",
           "name": "POSCO홀딩스",
-          "value": 376302,
-          "change": 1.59
+          "value": 378520,
+          "change": 1.79
         },
         {
           "code": "051910",
           "name": "LG화학",
-          "value": 332669,
-          "change": -0.93
+          "value": 333843,
+          "change": -0.47
         },
         {
           "code": "010130",
           "name": "고려아연",
-          "value": 322939,
-          "change": 9.02
+          "value": 323302,
+          "change": 9.15
         },
         {
           "code": "009830",
@@ -630,31 +630,31 @@
           "code": "004020",
           "name": "현대제철",
           "value": 55512,
-          "change": -2.09
+          "change": -1.97
         },
         {
           "code": "002380",
           "name": "KCC",
-          "value": 45816,
-          "change": 8.54
+          "value": 45963,
+          "change": 8.89
         },
         {
           "code": "011170",
           "name": "롯데케미칼",
-          "value": 42335,
-          "change": -5.37
+          "value": 42504,
+          "change": -5.08
         },
         {
           "code": "014680",
           "name": "한솔케미칼",
           "value": 31781,
-          "change": 1.75
+          "change": 1.57
         },
         {
           "code": "120110",
           "name": "코오롱인더",
-          "value": 31552,
-          "change": 2.77
+          "value": 31650,
+          "change": 3.3
         },
         {
           "code": "103140",
@@ -665,50 +665,50 @@
         {
           "code": "298020",
           "name": "효성티앤씨",
-          "value": 21845,
+          "value": 21759,
           "change": -0.78
         },
         {
           "code": "005070",
           "name": "코스모신소재",
-          "value": 20917,
-          "change": 0.64
+          "value": 21050,
+          "change": 1.12
         },
         {
           "code": "093370",
           "name": "후성",
-          "value": 15219,
-          "change": 0.42
+          "value": 15176,
+          "change": 0.14
         },
         {
           "code": "000670",
           "name": "영풍",
-          "value": 12997,
+          "value": 12979,
           "change": 4.44
         },
         {
           "code": "456040",
           "name": "OCI홀딩스",
-          "value": 12676,
-          "change": -1.87
+          "value": 12623,
+          "change": -2.22
         },
         {
           "code": "298050",
           "name": "효성첨단소재",
-          "value": 11572,
-          "change": -3.0
+          "value": 11583,
+          "change": -2.9
         },
         {
           "code": "003030",
           "name": "세아제강지주",
-          "value": 8808,
-          "change": -4.8
+          "value": 8828,
+          "change": -4.59
         },
         {
           "code": "344820",
           "name": "KCC글라스",
-          "value": 4496,
-          "change": -2.59
+          "value": 4503,
+          "change": -2.42
         },
         {
           "code": "001230",
@@ -724,26 +724,26 @@
         {
           "code": "373220",
           "name": "LG에너지솔루션",
-          "value": 1127880,
-          "change": 2.01
+          "value": 1130220,
+          "change": 2.22
         },
         {
           "code": "003670",
           "name": "포스코퓨처엠",
-          "value": 255720,
-          "change": 7.68
+          "value": 257054,
+          "change": 8.24
         },
         {
           "code": "066970",
           "name": "엘앤에프",
           "value": 79871,
-          "change": -0.23
+          "change": 0.0
         },
         {
           "code": "336260",
           "name": "두산퓨얼셀",
-          "value": 60871,
-          "change": 27.31
+          "value": 60634,
+          "change": 27.06
         }
       ]
     },
@@ -754,49 +754,49 @@
           "code": "207940",
           "name": "삼성바이오로직스",
           "value": 685106,
-          "change": -0.27
+          "change": -0.34
         },
         {
           "code": "068270",
           "name": "셀트리온",
-          "value": 428237,
-          "change": -1.01
+          "value": 428456,
+          "change": -0.96
         },
         {
           "code": "326030",
           "name": "SK바이오팜",
-          "value": 77216,
-          "change": -0.7
+          "value": 77295,
+          "change": -0.6
         },
         {
           "code": "000100",
           "name": "유한양행",
-          "value": 65867,
+          "value": 65792,
           "change": -2.65
         },
         {
           "code": "128940",
           "name": "한미약품",
           "value": 55158,
-          "change": -2.25
+          "change": -2.13
         },
         {
           "code": "008930",
           "name": "한미사이언스",
-          "value": 24986,
-          "change": -3.02
+          "value": 24952,
+          "change": -3.15
         },
         {
           "code": "009420",
           "name": "한올바이오파마",
-          "value": 22881,
-          "change": -2.7
+          "value": 22805,
+          "change": -3.02
         },
         {
           "code": "069620",
           "name": "대웅제약",
-          "value": 16523,
-          "change": -2.78
+          "value": 16488,
+          "change": -2.98
         },
         {
           "code": "006280",
@@ -808,7 +808,7 @@
           "code": "185750",
           "name": "종근당",
           "value": 10962,
-          "change": -3.48
+          "change": -3.37
         },
         {
           "code": "003850",
@@ -819,8 +819,8 @@
         {
           "code": "000640",
           "name": "동아쏘시오홀딩스",
-          "value": 6375,
-          "change": -2.44
+          "value": 6368,
+          "change": -2.54
         },
         {
           "code": "170900",
@@ -836,38 +836,38 @@
         {
           "code": "035420",
           "name": "NAVER",
-          "value": 310928,
-          "change": -0.48
+          "value": 311302,
+          "change": -0.36
         },
         {
           "code": "035720",
           "name": "카카오",
-          "value": 204477,
+          "value": 204697,
           "change": -1.49
         },
         {
           "code": "017670",
           "name": "SK텔레콤",
-          "value": 203202,
-          "change": -2.05
+          "value": 203628,
+          "change": -1.85
         },
         {
           "code": "030200",
           "name": "KT",
           "value": 141838,
-          "change": -2.81
+          "change": -2.64
         },
         {
           "code": "032640",
           "name": "LG유플러스",
-          "value": 67482,
-          "change": -2.94
+          "value": 67569,
+          "change": -2.88
         },
         {
           "code": "079160",
           "name": "CJ",
-          "value": 7939,
-          "change": -3.42
+          "value": 7906,
+          "change": -3.83
         }
       ]
     },
@@ -889,104 +889,104 @@
         {
           "code": "001040",
           "name": "CJ",
-          "value": 72426,
+          "value": 72594,
           "change": -3.79
         },
         {
           "code": "021240",
           "name": "코웨이",
-          "value": 58807,
-          "change": -4.04
+          "value": 58949,
+          "change": -3.92
         },
         {
           "code": "271560",
           "name": "오리온",
-          "value": 55221,
-          "change": -2.24
+          "value": 55142,
+          "change": -2.31
         },
         {
           "code": "051900",
           "name": "LG생활건강",
-          "value": 44738,
-          "change": -4.47
+          "value": 44612,
+          "change": -4.65
         },
         {
           "code": "023530",
           "name": "롯데쇼핑",
-          "value": 37260,
-          "change": -4.84
+          "value": 37288,
+          "change": -4.69
         },
         {
           "code": "097950",
           "name": "CJ제일제당",
-          "value": 36933,
-          "change": -4.15
+          "value": 37013,
+          "change": -4.36
         },
         {
           "code": "004170",
           "name": "신세계",
-          "value": 35772,
-          "change": -0.37
+          "value": 35947,
+          "change": -0.24
         },
         {
           "code": "139480",
           "name": "이마트",
-          "value": 27699,
-          "change": -2.36
+          "value": 27725,
+          "change": -2.27
         },
         {
           "code": "026960",
           "name": "동서",
-          "value": 24816,
+          "value": 24865,
           "change": -4.01
         },
         {
           "code": "002790",
           "name": "아모레G",
-          "value": 24727,
+          "value": 24749,
           "change": -3.5
         },
         {
           "code": "192820",
           "name": "코스맥스",
-          "value": 23882,
-          "change": 0.48
+          "value": 23769,
+          "change": 0.24
         },
         {
           "code": "069960",
           "name": "현대백화점",
-          "value": 23295,
-          "change": -2.24
+          "value": 23252,
+          "change": -2.78
         },
         {
           "code": "004370",
           "name": "농심",
-          "value": 22931,
-          "change": -1.05
+          "value": 22961,
+          "change": -0.92
         },
         {
           "code": "282330",
           "name": "BGF리테일",
-          "value": 22405,
-          "change": -2.11
+          "value": 22422,
+          "change": -1.96
         },
         {
           "code": "161890",
           "name": "한국콜마",
-          "value": 20560,
-          "change": -1.8
+          "value": 20512,
+          "change": -2.03
         },
         {
           "code": "007070",
           "name": "GS리테일",
-          "value": 18760,
-          "change": -2.6
+          "value": 18802,
+          "change": -2.39
         },
         {
           "code": "057050",
           "name": "현대홈쇼핑",
-          "value": 9694,
-          "change": 1.17
+          "value": 9672,
+          "change": 0.94
         },
         {
           "code": "001680",
@@ -997,14 +997,14 @@
         {
           "code": "005180",
           "name": "빙그레",
-          "value": 6427,
-          "change": -2.28
+          "value": 6445,
+          "change": -2.02
         },
         {
           "code": "017810",
           "name": "풀무원",
-          "value": 4227,
-          "change": -4.98
+          "value": 4198,
+          "change": -5.64
         }
       ]
     },
@@ -1014,20 +1014,20 @@
         {
           "code": "096770",
           "name": "SK이노베이션",
-          "value": 243815,
-          "change": 0.07
+          "value": 246656,
+          "change": 1.24
         },
         {
           "code": "267250",
           "name": "HD현대",
-          "value": 203171,
-          "change": -4.96
+          "value": 203878,
+          "change": -4.63
         },
         {
           "code": "010950",
           "name": "S-Oil",
-          "value": 142266,
-          "change": -4.53
+          "value": 142848,
+          "change": -4.14
         }
       ]
     },
@@ -1037,14 +1037,14 @@
         {
           "code": "015760",
           "name": "한국전력",
-          "value": 289846,
-          "change": 1.46
+          "value": 290488,
+          "change": 1.69
         },
         {
           "code": "036460",
           "name": "한국가스공사",
-          "value": 32990,
-          "change": -2.07
+          "value": 33077,
+          "change": -1.81
         },
         {
           "code": "071320",
@@ -1055,8 +1055,8 @@
         {
           "code": "004690",
           "name": "삼천리",
-          "value": 5043,
-          "change": -0.81
+          "value": 5047,
+          "change": -0.74
         },
         {
           "code": "267290",
@@ -1072,26 +1072,26 @@
         {
           "code": "259960",
           "name": "크래프톤",
-          "value": 129203,
+          "value": 128752,
           "change": -0.87
         },
         {
           "code": "352820",
           "name": "하이브",
-          "value": 104707,
-          "change": -4.47
+          "value": 104920,
+          "change": -4.08
         },
         {
           "code": "036570",
           "name": "엔씨소프트",
-          "value": 51018,
-          "change": -2.06
+          "value": 51116,
+          "change": -1.68
         },
         {
           "code": "251270",
           "name": "넷마블",
-          "value": 39861,
-          "change": -1.62
+          "value": 39820,
+          "change": -1.72
         }
       ]
     }
