@@ -45,6 +45,20 @@
   .brand .logo { font-weight: 900; font-size: 18px; letter-spacing: -0.03em; }
   .brand .logo span { color: #5fc285; font-weight: 700; }
   .brand .tagline { font-size: 12px; color: #6b7280; font-weight: 400; }
+  /* 시장 펄스 (헤더 중앙 KOSPI 인디케이터) */
+  .market-pulse {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 4px 18px; border-left: 1px solid #1a1a1a; border-right: 1px solid #1a1a1a;
+    margin: 0 14px; min-width: 180px;
+  }
+  .mp-label { font-size: 10px; color: #6b7280; letter-spacing: 0.06em; font-weight: 500; }
+  .mp-value { display: flex; align-items: baseline; gap: 6px; margin: 2px 0; }
+  .mp-arrow { font-size: 22px; line-height: 1; font-weight: 800; }
+  .mp-pct { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+  .mp-status { font-size: 10px; color: #9ca3af; font-weight: 500; }
+  .market-pulse.up .mp-arrow, .market-pulse.up .mp-pct { color: #65b282; }
+  .market-pulse.down .mp-arrow, .market-pulse.down .mp-pct { color: #c47070; }
+  .market-pulse.flat .mp-arrow, .market-pulse.flat .mp-pct { color: #9ca3af; }
   .index-info { display: flex; gap: 28px; align-items: center; font-size: 13px; }
   .index-info .label { color: #6b7280; margin-right: 6px; font-weight: 400; }
   .index-info .value { font-weight: 700; }
@@ -400,6 +414,14 @@
       <div class="logo">코리아<span> 히트맵</span></div>
       <div class="tagline">코스피 200 시총 가중 트리맵 · 한눈에 보는 한국 시장</div>
     </div>
+    <div class="market-pulse" id="market-pulse">
+      <div class="mp-label">KOSPI 200 가중평균</div>
+      <div class="mp-value" id="mp-value">
+        <span class="mp-arrow" id="mp-arrow">—</span>
+        <span class="mp-pct" id="mp-pct">—</span>
+      </div>
+      <div class="mp-status" id="mp-status">시장 진단 로딩 중</div>
+    </div>
     <div class="index-info" id="index-info">
       <div><span class="label">기준일</span><span class="value" id="as-of">—</span></div>
       <div><span class="label">종목 수</span><span class="value" id="stock-count">—</span></div>
@@ -589,6 +611,29 @@ function updateHeader(data) {
   wcEl.textContent = (wc >= 0 ? "+" : "") + wc.toFixed(2) + "%";
   wcEl.className = "value " + (wc >= 0 ? "pos" : "neg");
   document.getElementById("footer-date").textContent = (data.as_of_iso || data.as_of) + " 기준";
+
+  // 시장 펄스 (KOSPI 200 가중평균 인디케이터)
+  const pulse = document.getElementById("market-pulse");
+  const arrow = document.getElementById("mp-arrow");
+  const pct = document.getElementById("mp-pct");
+  const status = document.getElementById("mp-status");
+  if (pulse && arrow && pct && status) {
+    pulse.classList.remove("up", "down", "flat");
+    if (wc > 0.1) {
+      pulse.classList.add("up");
+      arrow.textContent = "▲";
+      status.textContent = wc > 1 ? "강한 상승세" : "상승 중";
+    } else if (wc < -0.1) {
+      pulse.classList.add("down");
+      arrow.textContent = "▼";
+      status.textContent = wc < -1 ? "강한 하락세" : "하락 중";
+    } else {
+      pulse.classList.add("flat");
+      arrow.textContent = "—";
+      status.textContent = "보합";
+    }
+    pct.textContent = (wc >= 0 ? "+" : "") + wc.toFixed(2) + "%";
+  }
 }
 
 function render(data) {
