@@ -56,6 +56,11 @@
   .mp-arrow { font-size: 22px; line-height: 1; font-weight: 800; }
   .mp-pct { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
   .mp-status { font-size: 10px; color: #9ca3af; font-weight: 500; }
+  .mp-updated {
+    font-size: 10px; color: #6b7280; margin-top: 3px;
+    padding-top: 3px; border-top: 1px solid #1a1a1a;
+    width: 100%; text-align: center;
+  }
   .market-pulse.up .mp-arrow, .market-pulse.up .mp-pct { color: #65b282; }
   .market-pulse.down .mp-arrow, .market-pulse.down .mp-pct { color: #c47070; }
   .market-pulse.flat .mp-arrow, .market-pulse.flat .mp-pct { color: #9ca3af; }
@@ -421,6 +426,7 @@
         <span class="mp-pct" id="mp-pct">—</span>
       </div>
       <div class="mp-status" id="mp-status">시장 진단 로딩 중</div>
+      <div class="mp-updated" id="mp-updated">갱신 정보 확인 중</div>
     </div>
     <div class="index-info" id="index-info">
       <div><span class="label">기준일</span><span class="value" id="as-of">—</span></div>
@@ -634,6 +640,32 @@ function updateHeader(data) {
     }
     pct.textContent = (wc >= 0 ? "+" : "") + wc.toFixed(2) + "%";
   }
+
+  // 마지막 갱신 시각 + 반영 시점
+  fetch("data/_meta.json", { cache: "no-cache" })
+    .then(r => r.json())
+    .then(m => {
+      const updEl = document.getElementById("mp-updated");
+      if (!updEl || !m.last_success_iso) return;
+      const last = new Date(m.last_success_iso);
+      const now = new Date();
+      const diffMin = Math.round((now - last) / 60000);
+      const hh = String(last.getHours()).padStart(2, "0");
+      const mm = String(last.getMinutes()).padStart(2, "0");
+      const dateStr = (last.getMonth() + 1) + "/" + last.getDate();
+      let agoStr;
+      if (diffMin < 1) agoStr = "방금 갱신";
+      else if (diffMin < 60) agoStr = diffMin + "분 전";
+      else if (diffMin < 24 * 60) agoStr = Math.round(diffMin / 60) + "시간 전";
+      else agoStr = Math.round(diffMin / (24 * 60)) + "일 전";
+      // 시장 시점 (KST) + 갱신 경과 시간
+      updEl.textContent = "데이터 시점 " + dateStr + " " + hh + ":" + mm + " · " + agoStr;
+      // 1시간 이상 stale 시 경고색
+      if (diffMin > 60) updEl.style.color = "#c47070";
+      else if (diffMin > 30) updEl.style.color = "#facc15";
+      else updEl.style.color = "#6b7280";
+    })
+    .catch(() => {});
 }
 
 function render(data) {
