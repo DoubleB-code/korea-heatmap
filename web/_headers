@@ -9,8 +9,8 @@
   Cross-Origin-Resource-Policy: same-origin
 
 /data/*
-  Cache-Control: public, max-age=300, s-maxage=300
+  Cache-Control: public, max-age=60, s-maxage=60, stale-while-revalidate=30
   Access-Control-Allow-Origin: *
 
 /*.html
-  Cache-Control: public, max-age=60, s-maxage=60
+  Cache-Control: public, max-age=30, s-maxage=30, stale-while-revalidate=60
