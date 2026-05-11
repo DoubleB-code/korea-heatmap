@@ -4,6 +4,6 @@
 #   PyKRX            → KRX가 GitHub Actions IP 차단해서 작동 불가
 #   FinanceDataReader → 한국 종목에 대해 KRX/Naver fchart 호출 (동일 차단 위험)
 #   yfinance         → Yahoo Finance 직접 호출 (GitHub Actions 호환 검증됨)
-yfinance>=0.2.40
+yfinance>=1.3.0
 pandas>=2.2.0,<3.0
 requests>=2.31.0
