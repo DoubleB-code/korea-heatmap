@@ -1,14 +1,5 @@
 /**
  * KOSPI 예측 게임 API — Cloudflare Workers entry point.
- *
- * 라우트:
- *   GET  /api/health            - 헬스체크
- *   POST /api/user/init         - 익명 사용자 생성/복귀
- *   GET  /api/me                - 내 정보
- *   GET  /api/me/history        - 내 베팅 이력
- *   GET  /api/bets/today        - 오늘 추첨 종목 (결정적)
- *   POST /api/bets              - 베팅 제출
- *   GET  /api/leaderboard       - 리더보드
  */
 import type { Env } from "./types";
 import { handleOptions, jsonResponse, errorResponse } from "./lib/responses";
@@ -21,6 +12,7 @@ import { handleHof, handleUserProfile } from "./handlers/hof";
 import {
   handleSubmitReveal, handleGetReveal, handleMyReveals,
 } from "./handlers/reveals";
+import { handleAuthStart, handleAuthCallback } from "./handlers/oauth";
 import { runSettlement } from "./handlers/settle";
 
 export default {
@@ -34,12 +26,10 @@ export default {
     const method = req.method;
 
     try {
-      // 헬스체크
       if (path === "/api/health") {
         return jsonResponse({ ok: true, ts: Date.now() }, {}, req, env);
       }
 
-      // User APIs
       if (path === "/api/user/init" && method === "POST") {
         return await handleUserInit(req, env);
       }
@@ -49,8 +39,10 @@ export default {
       if (path === "/api/me/history" && method === "GET") {
         return await handleMyHistory(req, env);
       }
+      if (path === "/api/me/privacy" && method === "PATCH") {
+        return await handleSetPrivacy(req, env);
+      }
 
-      // Bets APIs
       if (path === "/api/bets/today" && method === "GET") {
         return await handleGetToday(req, env);
       }
@@ -58,28 +50,27 @@ export default {
         return await handleSubmitBet(req, env);
       }
 
-      // Leaderboard
       if (path === "/api/leaderboard" && method === "GET") {
         return await handleLeaderboard(req, env);
       }
-
-      // Privacy 토글
-      if (path === "/api/me/privacy" && method === "PATCH") {
-        return await handleSetPrivacy(req, env);
-      }
-
-      // 명예의 전당
       if (path === "/api/hof" && method === "GET") {
         return await handleHof(req, env);
       }
 
-      // 공개 프로필
+      const authStartMatch = path.match(/^\/api\/auth\/(google|kakao)\/start$/);
+      if (authStartMatch && method === "GET") {
+        return await handleAuthStart(req, env, authStartMatch[1] as "google" | "kakao");
+      }
+      const authCallbackMatch = path.match(/^\/api\/auth\/(google|kakao)\/callback$/);
+      if (authCallbackMatch && method === "GET") {
+        return await handleAuthCallback(req, env, authCallbackMatch[1] as "google" | "kakao");
+      }
+
       const profileMatch = path.match(/^\/api\/users\/([^/]+)\/profile$/);
       if (profileMatch && method === "GET") {
         return await handleUserProfile(req, env, profileMatch[1]);
       }
 
-      // 베팅 열람 시장
       if (path === "/api/reveals" && method === "POST") {
         return await handleSubmitReveal(req, env);
       }
@@ -91,9 +82,7 @@ export default {
         return await handleGetReveal(req, env, revealMatch[1], revealMatch[2]);
       }
 
-      return errorResponse(404, "NOT_FOUND",
-        `${method} ${path} not found`, req, env);
-
+      return errorResponse(404, "NOT_FOUND", `${method} ${path} not found`, req, env);
     } catch (err) {
       console.error("Unhandled error:", err);
       const msg = err instanceof Error ? err.message : String(err);
@@ -101,7 +90,6 @@ export default {
     }
   },
 
-  // Cron 정산 — 매일 17:30 KST (wrangler.toml triggers.crons)
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     console.log("[CRON] settlement start:", event.cron, new Date().toISOString());
     try {
