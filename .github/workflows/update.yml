@@ -1,0 +1,183 @@
+name: Update KOSPI 200
+
+on:
+  schedule:
+    - cron: '30 0-8 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      retry_count:
+        description: 'Auto-retry count (internal use only)'
+        default: '0'
+        required: false
+
+concurrency:
+  group: kospi-update
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Run pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+      - name: Run tests (mock-only)
+        run: pytest tests/ --ignore=tests/test_output_schema.py -v
+
+  update:
+    name: Fetch + validate + commit
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Fetch KOSPI 200 (shell retry 3, KST timezone)
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          cd ingest
+          for attempt in 1 2 3; do
+            echo "Fetch attempt ${attempt}/3"
+            python run.py && break
+            if [ $attempt -lt 3 ]; then
+              WAIT=$((attempt * 60))
+              echo "Failed -- waiting ${WAIT}s"
+              sleep $WAIT
+            else
+              echo "All 3 attempts failed"
+              exit 1
+            fi
+          done
+
+      - name: Validate output (CI gate)
+        run: python tests/validate_output.py web/data/treemap.json
+
+      - name: Schema test against new data
+        run: pytest tests/test_output_schema.py -v
+
+      - name: Commit if changed (with retry on push reject)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BOT_EMAIL="41898282+github-actions[bot]@users.noreply.github.com"
+          DATA_FILES="web/data/treemap.json web/data/treemap.pretty.json web/data/_meta.json"
+          mkdir -p /tmp/cron_backup
+          cp $DATA_FILES /tmp/cron_backup/ 2>/dev/null || true
+          git add $DATA_FILES || true
+          if git diff --cached --quiet; then
+            echo "No changes -- skipping commit"
+            exit 0
+          fi
+          for i in 1 2 3 4 5; do
+            echo "Push attempt $i/5"
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/cron_backup/* web/data/ 2>/dev/null || true
+            git add $DATA_FILES || true
+            if git diff --cached --quiet; then exit 0; fi
+            NEW_MSG="data: KOSPI 200 snapshot $(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')"
+            LAST_MSG=$(git log -1 --pretty=%s origin/main)
+            LAST_AUTHOR=$(git log -1 --pretty=%ae origin/main)
+            if echo "$LAST_MSG" | grep -q "^data: KOSPI 200 snapshot" && [ "$LAST_AUTHOR" = "$BOT_EMAIL" ]; then
+              git commit --amend -m "$NEW_MSG" --reset-author
+              if git push --force-with-lease origin main; then exit 0; fi
+            else
+              git commit -m "$NEW_MSG"
+              if git push origin main; then exit 0; fi
+            fi
+            sleep $((i * 3))
+          done
+          exit 1
+
+  verify-and-retry:
+    name: Verify freshness and auto-retry
+    needs: update
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 5
+      - name: Check data freshness and decide retry
+        id: check
+        run: |
+          RETRY_COUNT="${{ github.event.inputs.retry_count || '0' }}"
+          LAST_COMMIT=$(git log -1 --format="%ct" -- web/data/treemap.json 2>/dev/null || echo "0")
+          NOW=$(date +%s)
+          AGE=$(( NOW - LAST_COMMIT ))
+          echo "data age: ${AGE}s ($((AGE / 60))min)"
+          echo "age_seconds=$AGE" >> $GITHUB_OUTPUT
+          echo "retry_count=$RETRY_COUNT" >> $GITHUB_OUTPUT
+          if [ "$AGE" -gt 5400 ] && [ "$RETRY_COUNT" -lt 2 ]; then
+            echo "stale=true" >> $GITHUB_OUTPUT
+            echo "DATA STALE -- will auto-retry"
+          else
+            echo "stale=false" >> $GITHUB_OUTPUT
+            echo "OK or max retries reached (age=${AGE}s retry=$RETRY_COUNT)"
+          fi
+      - name: Auto re-trigger if stale
+        if: steps.check.outputs.stale == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEXT=$(( ${{ steps.check.outputs.retry_count }} + 1 ))
+          gh workflow run update.yml --ref main --field retry_count="${NEXT}"
+          echo "Auto-retry #${NEXT} triggered"
+
+  notify-failure:
+    name: Open issue on failure
+    needs: [test, update, verify-and-retry]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Create or update tracking issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'KOSPI update failed -- auto alert';
+            const body = [
+              '## Auto Alert: KOSPI 200 Update Failed',
+              '- Time(UTC): ' + new Date().toISOString(),
+              '- Run: ' + context.serverUrl + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId,
+              '- Auto-retry (max 2x) already attempted',
+            ].join('\n');
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'auto-alert',
+            });
+            const existing = issues.find(i => i.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: existing.number,
+                body: 'Recurrence: ' + context.serverUrl + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: ['auto-alert', 'bug'],
+              });
+            }
