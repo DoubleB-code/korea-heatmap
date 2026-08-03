@@ -120,3 +120,5 @@ npm run tail
 # D1 직접 쿼리
 npx wrangler d1 execute kospi-bets --remote --command "SELECT COUNT(*) FROM users"
 ```
+
+<!-- trigger: initial auto-deploy after adding deploy-api.yml workflow -->
