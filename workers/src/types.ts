@@ -12,6 +12,12 @@ export interface Env {
   MIN_BET: string;
   MAX_BET: string;
   DEAD_ZONE_PCT: string;
+
+  // secrets (Cloudflare Worker Secrets)
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  KAKAO_CLIENT_ID?: string;
+  KAKAO_CLIENT_SECRET?: string;
 }
 
 export interface User {
@@ -26,6 +32,13 @@ export interface User {
   streak_days: number;
   last_bet_date: string | null;
   banned: number;
+  auth_provider?: "anon" | "kakao" | "google";
+  auth_external_id?: string | null;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  is_pro?: number;
+  pro_qualified_at?: number | null;
+  bets_public?: number;
 }
 
 export interface Bet {
