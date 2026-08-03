@@ -39,6 +39,7 @@ META_FILE = OUT_DIR / "_meta.json"
 
 MIN_STOCKS = 150
 MAX_CHANGE_PCT = 30.0
+MAX_STALE_OR_OUTLIER_RATIO = 0.05  # 이상치+데이터불일치 비율이 이 이상이면 스냅샷 전체를 오염된 것으로 간주
 MAX_RETRIES = 3
 BACKOFF_BASE = 1.0
 PER_REQUEST_DELAY = 0.0
@@ -341,6 +342,13 @@ def fetch_prices(codes):
             prev_close = float(closes.iloc[-2])
             if prev_close <= 0:
                 continue
+
+            # 날짜 정합성 검증: 최신 종가가 실제로 "가장 최근 거래일"인지 확인.
+            # yfinance의 다종목 threaded 일괄 다운로드는 간헐적으로 종목 간 데이터가
+            # 어긋나는 알려진 문제가 있어, 최신 종가일이 전체 유니버스 기준
+            # 가장 흔한(최빈) 최신 거래일과 다르면 "밀린 데이터"로 간주해 제외한다.
+            last_date = closes.index[-1].date()
+
             change = (today_close - prev_close) / prev_close * 100
 
             # 진단 로그:
@@ -369,9 +377,23 @@ def fetch_prices(codes):
                 "prev_close": prev_close,
                 "change_pct": round(change, 2),
                 "spark": spark_pts,
+                "last_date": last_date,
             }
         except (KeyError, IndexError, ValueError):
             continue
+
+    # 최빈 최신 거래일(대다수 종목이 공유하는 날짜)을 기준일로 확정하고,
+    # 이 날짜와 다른 종가를 가진(=데이터가 밀린) 종목은 제외한다.
+    if out:
+        date_counts = {}
+        for p in out.values():
+            date_counts[p["last_date"]] = date_counts.get(p["last_date"], 0) + 1
+        consensus_date = max(date_counts, key=date_counts.get)
+        stale_codes = [c for c, p in out.items() if p["last_date"] != consensus_date]
+        for c in stale_codes:
+            log.warning("Stale/misaligned last_date excluded: %s (%s != consensus %s)",
+                        c, out[c]["last_date"], consensus_date)
+            del out[c]
 
     log.info("Prices collected: %d/%d", len(out), len(codes))
     return out
@@ -423,6 +445,7 @@ def fetch_kospi200(date):
 
     rows = []
     skipped = 0
+    outliers = 0
     for code in codes:
         if code not in prices or code not in marcaps:
             skipped += 1
@@ -436,6 +459,7 @@ def fetch_kospi200(date):
         if abs(p["change_pct"]) > MAX_CHANGE_PCT:
             log.warning("Outlier excluded: %s change %+.2f%%", code, p["change_pct"])
             skipped += 1
+            outliers += 1
             continue
 
         name = resolve_name(code)
@@ -449,6 +473,17 @@ def fetch_kospi200(date):
             "spark": p.get("spark", []),
         }
         rows.append(row)
+
+    # 서킷 브레이커: 이상치 비율이 임계값을 넘으면 스냅샷 전체가 오염된 것으로
+    # 판단해 발행을 중단한다 (개별 종목만 거르면 왜곡된 가중평균이 그대로
+    # 새어나가는 문제가 있었음).
+    outlier_ratio = outliers / len(codes) if codes else 0
+    if outlier_ratio > MAX_STALE_OR_OUTLIER_RATIO:
+        raise RuntimeError(
+            f"이상치 비율 {outlier_ratio:.1%} > {MAX_STALE_OR_OUTLIER_RATIO:.0%} "
+            f"— 데이터 소스가 오염된 것으로 판단, 이번 스냅샷 발행을 중단합니다 "
+            f"(이상치 {outliers}종목 / 전체 {len(codes)}종목)"
+        )
 
     log.info("Collection complete: %d stocks (skipped %d)", len(rows), skipped)
     return rows
