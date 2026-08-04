@@ -13,6 +13,7 @@ import {
   handleSubmitReveal, handleGetReveal, handleMyReveals,
 } from "./handlers/reveals";
 import { handleAuthStart, handleAuthCallback } from "./handlers/oauth";
+import { handleTrackVisit, handleGetVisitCount } from "./handlers/visits";
 import { runSettlement } from "./handlers/settle";
 
 export default {
@@ -55,6 +56,13 @@ export default {
       }
       if (path === "/api/hof" && method === "GET") {
         return await handleHof(req, env);
+      }
+
+      if (path === "/api/visits" && method === "POST") {
+        return await handleTrackVisit(req, env);
+      }
+      if (path === "/api/visits" && method === "GET") {
+        return await handleGetVisitCount(req, env);
       }
 
       const authStartMatch = path.match(/^\/api\/auth\/(google|kakao)\/start$/);

@@ -150,6 +150,29 @@
   .kh-side-fallback .kh-coupang-disclosure {
     font-size: 9px; line-height: 1.4; color: #9ca3af; margin-top: 6px;
   }
+  .kh-self-cta {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; width: 100%; height: 100%; padding: 14px 10px; box-sizing: border-box;
+    text-decoration: none; text-align: center;
+    background: linear-gradient(160deg, #2a2418, #1a1611);
+    border: 1px solid rgba(251,191,36,0.35); border-radius: 6px;
+    transition: transform 0.15s, box-shadow 0.2s;
+  }
+  .kh-self-cta:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(251,191,36,0.25); }
+  .kh-self-cta-badge {
+    font-size: 9px; font-weight: 800; letter-spacing: 0.08em;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a1a;
+    padding: 2px 7px; border-radius: 10px;
+  }
+  .kh-self-cta-title {
+    font-size: 15px; font-weight: 800; color: #f5f0e6; line-height: 1.3;
+  }
+  .kh-self-cta-desc {
+    font-size: 10px; color: #9c9284; line-height: 1.4;
+  }
+  .kh-self-cta-arrow {
+    font-size: 11px; font-weight: 700; color: #fbbf24; margin-top: 2px;
+  }
   .kh-ph .kh-tag {
     font-size: 10px; letter-spacing: 0.15em; color: #6b7280;
     border: 1px solid #262626; padding: 2px 8px; border-radius: 2px;
@@ -504,7 +527,10 @@
         <span class="bet-cta-badge">BETA</span>
       </a>
             <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
-        <img src="https://visitor-badge.laobi.icu/badge?page_id=onsecon.korea-heatmap&amp;left_text=%EB%B0%A9%EB%AC%B8%EC%9E%90&amp;right_color=%2365b282&amp;left_color=%231a2e1e" alt="방문자" style="display:inline-block;margin-bottom:2px;border-radius:2px;height:13px">
+        <span id="daily-visitor-badge" class="kh-daily-visitor" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#9c9284;margin-bottom:2px;">
+          <span style="width:6px;height:6px;border-radius:50%;background:#65b282;display:inline-block;"></span>
+          <span>데일리 방문자 <b id="daily-visitor-count" style="color:#f5f0e6;">-</b>명</span>
+        </span>
         <input class="search" id="search" type="text" placeholder="종목 검색 (예: 삼성전자, 005930)" />
       </div> <div class="btn-stack">
       <button id="pf-toggle" class="pf-toggle">
@@ -531,11 +557,12 @@
         </div>
       </div>
       <div class="kh-cell kh-box" data-slot="left-2">
-        <div class="kh-ph">
-          <span class="kh-tag">광고</span>
-          <span class="kh-sz">160 × 250</span>
-          <span class="kh-hint">하단 광고 자리</span>
-        </div>
+        <a href="/bet.html" class="kh-self-cta" aria-label="내일의 주식 예측 페이지로 이동">
+          <span class="kh-self-cta-badge">BETA</span>
+          <span class="kh-self-cta-title">내일의 주식<br>예측하기</span>
+          <span class="kh-self-cta-desc">포인트 걸고 승부,<br>명예의 전당에 도전</span>
+          <span class="kh-self-cta-arrow">시작하기 →</span>
+        </a>
       </div>
     </aside>
     <div id="treemap-wrap" style="position:relative; flex:1; min-width:0;">
@@ -1251,5 +1278,28 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeStock
 </script>
 
 
+
+<script>
+(function(){
+  try {
+    var VISIT_API = 'https://kospi-bets-api.onsecon.workers.dev/api/visits';
+    var vid = localStorage.getItem('kh_vid');
+    if (!vid) {
+      vid = 'v_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem('kh_vid', vid);
+    }
+    var todayKey = 'kh_visit_' + new Date().toLocaleDateString('sv-SE', {timeZone: 'Asia/Seoul'});
+    var alreadyToday = localStorage.getItem(todayKey);
+    var badge = document.getElementById('daily-visitor-count');
+    var req = alreadyToday
+      ? fetch(VISIT_API, {method: 'GET'})
+      : fetch(VISIT_API, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({visitor_id: vid})});
+    req.then(function(r){ return r.json(); }).then(function(data){
+      if (!alreadyToday) localStorage.setItem(todayKey, '1');
+      if (badge && typeof data.count === 'number') badge.textContent = data.count.toLocaleString('ko-KR');
+    }).catch(function(){});
+  } catch(e) {}
+})();
+</script>
 </body>
 </html>
