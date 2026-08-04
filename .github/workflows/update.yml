@@ -52,6 +52,7 @@ jobs:
       - name: Fetch KOSPI 200 (shell retry 3, KST timezone)
         env:
           PYTHONUNBUFFERED: "1"
+          KRX_AUTH_KEY: ${{ secrets.KRX_AUTH_KEY }}
         run: |
           cd ingest
           for attempt in 1 2 3; do

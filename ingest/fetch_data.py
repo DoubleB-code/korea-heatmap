@@ -1,13 +1,19 @@
 """
-KOSPI 200 일별 스냅샷 수집 (yfinance / Yahoo Finance 기반).
+KOSPI 200 일별 스냅샷 수집 (KRX Open API 기반).
 
-PyKRX -> FinanceDataReader -> yfinance 전환 이력:
+수집 소스 전환 이력:
 - PyKRX: KRX가 GitHub Actions IP를 차단해서 작동 불가
 - FinanceDataReader: 한국 종목에 대해 내부적으로 KRX/Naver fchart 호출 -> 동일 차단 문제
-- yfinance: 100% Yahoo Finance -- 검증된 GitHub Actions 호환
+- yfinance: 100% Yahoo Finance -- 종목 간 데이터가 간헐적으로 어긋나는 신뢰성 문제 발견 (2026-08)
+- KRX Open API: 한국거래소 공식 API. 인증키 기반, 하루 10,000회 한도, 실제로는 하루 3회 미만 사용.
+  등락률/종가/시가총액을 거래소가 직접 계산해서 내려주므로 프론트에서 재계산할 필요가 없고,
+  전 종목이 단일 호출로 한번에 내려오기 때문에 종목 간 데이터 정합성 문제가 근본적으로 사라짐.
 
 Universe (200 종목):
 - sectors.TICKER_TO_SECTOR 의 keys 가 KOSPI 200 ticker 리스트 (분기 1회 수동 갱신)
+
+인증:
+- 환경변수 KRX_AUTH_KEY 필요 (GitHub Actions Secrets 에 등록, 코드/레포에는 절대 커밋하지 않음)
 
 종료 코드:
     0  성공 또는 휴장일 SKIP
@@ -16,14 +22,14 @@ Universe (200 종목):
 """
 from __future__ import annotations
 
+import json
 import logging
+import os
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-import pandas as pd
-import yfinance as yf
+import requests
 
 from sectors import TICKER_TO_SECTOR, classify_sector
 
@@ -38,12 +44,14 @@ OUT_PRETTY = OUT_DIR / "treemap.pretty.json"
 META_FILE = OUT_DIR / "_meta.json"
 
 MIN_STOCKS = 150
-MAX_CHANGE_PCT = 30.0
-MAX_STALE_OR_OUTLIER_RATIO = 0.05  # 이상치+데이터불일치 비율이 이 이상이면 스냅샷 전체를 오염된 것으로 간주
+MAX_CHANGE_PCT = 30.0  # KRX 가격제한폭(±30%). hierarchy.py의 validate_tree 임계치와 반드시 일치시킬 것.
+MAX_STALE_OR_OUTLIER_RATIO = 0.05  # 이상치 비율이 이 이상이면 스냅샷 전체를 오염된 것으로 간주
 MAX_RETRIES = 3
 BACKOFF_BASE = 1.0
-PER_REQUEST_DELAY = 0.0
-MARCAP_WORKERS = 16
+SPARK_DAYS = 30
+
+KRX_BASE_URL = "https://data-dbg.krx.co.kr/svc/apis/sto"
+KRX_DAILY_TRADE_API = "stk_bydd_trd"
 
 KOREAN_NAMES = {
     "005930": "삼성전자",
@@ -264,13 +272,13 @@ def with_retry(fn, *args, _label="", **kwargs):
             last_exc = exc
             wait = BACKOFF_BASE * (2 ** (attempt - 1))
             log.warning(
-                "%s 호출 실패 (시도 %d/%d): %s — %.1fs 대기 후 재시도",
-                _label or fn.__name__, attempt, MAX_RETRIES, exc, wait,
+                "%s 호출 실패 (시도 %d/%d): %s -- %.1fs 대기 후 재시도",
+                _label or getattr(fn, "__name__", "call"), attempt, MAX_RETRIES, exc, wait,
             )
             if attempt < MAX_RETRIES:
                 time.sleep(wait)
     raise RuntimeError(
-        f"{_label or fn.__name__} 재시도 {MAX_RETRIES}회 모두 실패: {last_exc}"
+        f"{_label or 'call'} 재시도 {MAX_RETRIES}회 모두 실패: {last_exc}"
     ) from last_exc
 
 
@@ -295,164 +303,101 @@ def load_universe():
     return codes
 
 
-def to_yf_symbol(code):
-    return f"{code.zfill(6)}.KS"
-
-
-def fetch_prices(codes):
-    """가격 + D-1 변동률 + 30일 sparkline. 일봉 45일 윈도우 (영업일 30일+ 확보)."""
-    symbols = [to_yf_symbol(c) for c in codes]
-    # 30일 영업일 sparkline + 휴장일 버퍼 → 45일 캘린더 윈도우
-    end_date = datetime.now(KST).date() + timedelta(days=1)
-    start_date = end_date - timedelta(days=45)
-    log.info("yf.download: %d symbols, period=%s..%s (30일 sparkline 포함)", len(symbols), start_date, end_date)
-
-    df = with_retry(
-        yf.download,
-        tickers=" ".join(symbols),
-        start=str(start_date),
-        end=str(end_date),
-        interval="1d",
-        group_by="ticker",
-        threads=True,
-        progress=False,
-        auto_adjust=False,
-        _label="yf.download",
-    )
-
-    if df is None or df.empty:
-        raise RuntimeError("yf.download empty result")
-
-    out = {}
-    # 진단용 watch list: 이 종목들은 항상 (날짜, 종가) 시퀀스 출력
-    DIAG_WATCH = {"005930", "011790", "336260", "028260", "006800", "000660"}
-    sample_logged = 0
-    for code in codes:
-        sym = to_yf_symbol(code)
-        try:
-            if isinstance(df.columns, pd.MultiIndex):
-                sub = df[sym]
-            else:
-                sub = df
-            closes = sub["Close"].dropna()
-            if len(closes) < 2:
-                continue
-
-            today_close = float(closes.iloc[-1])
-            prev_close = float(closes.iloc[-2])
-            if prev_close <= 0:
-                continue
-
-            # 날짜 정합성 검증: 최신 종가가 실제로 "가장 최근 거래일"인지 확인.
-            # yfinance의 다종목 threaded 일괄 다운로드는 간헐적으로 종목 간 데이터가
-            # 어긋나는 알려진 문제가 있어, 최신 종가일이 전체 유니버스 기준
-            # 가장 흔한(최빈) 최신 거래일과 다르면 "밀린 데이터"로 간주해 제외한다.
-            last_date = closes.index[-1].date()
-
-            change = (today_close - prev_close) / prev_close * 100
-
-            # 진단 로그:
-            # 1) 처음 3종목 항상 출력
-            # 2) 의심 watch list 항상 출력
-            # 3) |변동률| > 10% 종목도 출력
-            should_log = (
-                sample_logged < 3
-                or code in DIAG_WATCH
-                or abs(change) > 10
-            )
-            if should_log:
-                tail = closes.tail(5)
-                log.info(
-                    "  diag %s (ch=%+.2f%%): %s",
-                    code, change,
-                    [(str(d.date()), round(float(v), 2)) for d, v in tail.items()],
-                )
-                sample_logged += 1
-
-            # 30일 sparkline (마지막 30개 영업일 종가)
-            spark_pts = [int(v) for v in closes.tail(30).tolist() if v > 0]
-
-            out[code] = {
-                "today_close": today_close,
-                "prev_close": prev_close,
-                "change_pct": round(change, 2),
-                "spark": spark_pts,
-                "last_date": last_date,
-            }
-        except (KeyError, IndexError, ValueError):
-            continue
-
-    # 최빈 최신 거래일(대다수 종목이 공유하는 날짜)을 기준일로 확정하고,
-    # 이 날짜와 다른 종가를 가진(=데이터가 밀린) 종목은 제외한다.
-    if out:
-        date_counts = {}
-        for p in out.values():
-            date_counts[p["last_date"]] = date_counts.get(p["last_date"], 0) + 1
-        consensus_date = max(date_counts, key=date_counts.get)
-        stale_codes = [c for c, p in out.items() if p["last_date"] != consensus_date]
-        for c in stale_codes:
-            log.warning("Stale/misaligned last_date excluded: %s (%s != consensus %s)",
-                        c, out[c]["last_date"], consensus_date)
-            del out[c]
-
-    log.info("Prices collected: %d/%d", len(out), len(codes))
-    return out
-
-
-def _fetch_one_marcap(code):
-    sym = to_yf_symbol(code)
-    try:
-        t = yf.Ticker(sym)
-        fi = t.fast_info
-        cap = None
-        if hasattr(fi, "get"):
-            cap = fi.get("market_cap") or fi.get("marketCap")
-        else:
-            cap = getattr(fi, "market_cap", None) or getattr(fi, "marketCap", None)
-        return code, int(cap) if cap else 0
-    except Exception:
-        return code, 0
-
-
-def fetch_marcaps(codes):
-    log.info("Marcap parallel fetch: %d codes (workers=%d)", len(codes), MARCAP_WORKERS)
-    out = {}
-    with ThreadPoolExecutor(max_workers=MARCAP_WORKERS) as ex:
-        futures = {ex.submit(_fetch_one_marcap, c): c for c in codes}
-        for fut in as_completed(futures):
-            code, cap = fut.result()
-            if cap > 0:
-                out[code] = cap
-    log.info("Marcap collected: %d/%d", len(out), len(codes))
-    return out
-
-
 def resolve_name(code):
     return KOREAN_NAMES.get(code, code)
 
 
+def _get_auth_key():
+    key = os.environ.get("KRX_AUTH_KEY", "").strip()
+    if not key:
+        raise RuntimeError("환경변수 KRX_AUTH_KEY 가 설정되지 않았습니다")
+    return key
+
+
+def _krx_get(api_id, params):
+    auth_key = _get_auth_key()
+    url = f"{KRX_BASE_URL}/{api_id}.json"
+
+    def _call():
+        resp = requests.get(url, params=params, headers={"AUTH_KEY": auth_key}, timeout=20)
+        if resp.status_code != 200:
+            raise RuntimeError(f"KRX API {resp.status_code}: {resp.text[:200]}")
+        data = resp.json()
+        if "OutBlock_1" not in data:
+            raise RuntimeError(f"KRX API 응답에 OutBlock_1 없음: {data}")
+        return data["OutBlock_1"]
+
+    return with_retry(_call, _label=f"KRX {api_id}")
+
+
+def _to_num(s, cast=float):
+    try:
+        return cast(str(s).replace(",", ""))
+    except (TypeError, ValueError):
+        return None
+
+
+def fetch_daily_trade(bas_dd):
+    """유가증권시장 전 종목의 당일 매매정보를 단일 호출로 수집."""
+    rows = _krx_get(KRX_DAILY_TRADE_API, {"basDd": bas_dd})
+    log.info("KRX stk_bydd_trd: %d rows (전체 유가증권시장)", len(rows))
+    out = {}
+    for r in rows:
+        code = r.get("ISU_SRT_CD") or r.get("ISU_CD", "")[-6:]
+        close = _to_num(r.get("TDD_CLSPRC"))
+        change_pct = _to_num(r.get("FLUC_RT"))
+        mktcap = _to_num(r.get("MKTCAP"), cast=int)
+        if not code or close is None or change_pct is None:
+            continue
+        out[code] = {
+            "today_close": close,
+            "change_pct": round(change_pct, 2),
+            "market_cap": mktcap or 0,
+        }
+    return out
+
+
+def _load_previous_tree():
+    if not OUT_FILE.exists():
+        return None
+    try:
+        return json.loads(OUT_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _prev_sparks(prev_tree):
+    """이전 스냅샷에서 종목별 (as_of, spark) 을 추출."""
+    sparks = {}
+    prev_date = prev_tree.get("as_of") if prev_tree else None
+    if not prev_tree:
+        return sparks, prev_date
+    for sector in prev_tree.get("children", []):
+        for stock in sector.get("children", []):
+            code = stock.get("code")
+            if code:
+                sparks[code] = stock.get("spark", [])
+    return sparks, prev_date
+
+
 def fetch_kospi200(date):
-    log.info("Reference date: %s (yfinance)", date)
+    log.info("Reference date: %s (KRX Open API)", date)
 
     codes = load_universe()
-    prices = fetch_prices(codes)
-    if not prices:
-        raise RuntimeError("No prices collected -- Yahoo Finance response error")
+    trade = fetch_daily_trade(date)
+    if not trade:
+        raise RuntimeError("No prices collected -- KRX API 응답 오류")
 
-    marcaps = fetch_marcaps(codes)
-    if not marcaps:
-        raise RuntimeError("No marcaps collected -- Yahoo Finance fast_info error")
+    prev_tree = _load_previous_tree()
+    prev_sparks, prev_date = _prev_sparks(prev_tree)
+    is_rerun_same_day = prev_date == date
 
     rows = []
     skipped = 0
     outliers = 0
     for code in codes:
-        if code not in prices or code not in marcaps:
-            skipped += 1
-            continue
-        p = prices[code]
-        cap = marcaps[code]
-        if cap <= 0:
+        p = trade.get(code)
+        if not p or p["market_cap"] <= 0:
             skipped += 1
             continue
 
@@ -463,25 +408,30 @@ def fetch_kospi200(date):
             continue
 
         name = resolve_name(code)
+
+        spark = list(prev_sparks.get(code, []))
+        if is_rerun_same_day and spark:
+            spark[-1] = int(p["today_close"])
+        else:
+            spark.append(int(p["today_close"]))
+        spark = spark[-SPARK_DAYS:]
+
         row = {
             "code": code,
             "name": name,
-            "value": cap // 100_000_000,
+            "value": p["market_cap"] // 100_000_000,
             "change": p["change_pct"],
             "sector": classify_sector(code, name),
             "price": int(p["today_close"]),
-            "spark": p.get("spark", []),
+            "spark": spark,
         }
         rows.append(row)
 
-    # 서킷 브레이커: 이상치 비율이 임계값을 넘으면 스냅샷 전체가 오염된 것으로
-    # 판단해 발행을 중단한다 (개별 종목만 거르면 왜곡된 가중평균이 그대로
-    # 새어나가는 문제가 있었음).
     outlier_ratio = outliers / len(codes) if codes else 0
     if outlier_ratio > MAX_STALE_OR_OUTLIER_RATIO:
         raise RuntimeError(
             f"이상치 비율 {outlier_ratio:.1%} > {MAX_STALE_OR_OUTLIER_RATIO:.0%} "
-            f"— 데이터 소스가 오염된 것으로 판단, 이번 스냅샷 발행을 중단합니다 "
+            f"-- 데이터 소스가 오염된 것으로 판단, 이번 스냅샷 발행을 중단합니다 "
             f"(이상치 {outliers}종목 / 전체 {len(codes)}종목)"
         )
 
