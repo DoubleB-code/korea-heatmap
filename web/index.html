@@ -147,6 +147,22 @@
     display: flex; flex-direction: column; align-items: center; gap: 8px;
     color: #4a4a4a; text-align: center; padding: 12px;
   }
+  
+  .kh-account { display:flex; align-items:center; gap:8px; font-size:12px; }
+  .kh-account-loading { color:#6b6355; }
+  .kh-account-guest { display:flex; gap:6px; }
+  .kh-account-btn {
+    background:#1a1a1a; color:#e5ded0; border:1px solid #333;
+    padding:6px 12px; border-radius:6px; font-size:12px; font-weight:700;
+    cursor:pointer; font-family:inherit; white-space:nowrap;
+    transition:background 0.15s, border-color 0.15s;
+  }
+  .kh-account-btn:hover { background:#242424; border-color:#65b282; }
+  .kh-account-user { display:flex; align-items:center; gap:8px; }
+  .kh-account-avatar { width:24px; height:24px; border-radius:50%; background:#65b282; }
+  .kh-account-name { font-weight:800; color:#f5f0e6; }
+  .kh-account-points { color:#fbbf24; font-weight:800; }
+
   .kh-side-fallback .kh-coupang-disclosure {
     font-size: 9px; line-height: 1.4; color: #9ca3af; margin-top: 6px;
   }
@@ -541,6 +557,9 @@
       <div><span class="label">가중 등락률</span><span class="value" id="weighted-change">—</span></div>
     </div>
     <div class="controls">
+      <div id="kh-account" class="kh-account">
+        <span class="kh-account-loading">···</span>
+      </div>
       <a href="/bet.html" class="bet-cta" aria-label="내일의 주식 예측 페이지로 이동">
         <span class="bet-cta-dot"></span>
         내일의 주식 예측하기
@@ -1319,6 +1338,38 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeStock
       if (badge && typeof data.count === 'number') badge.textContent = data.count.toLocaleString('ko-KR');
     }).catch(function(){});
   } catch(e) {}
+})();
+</script>
+
+<script>
+(function(){
+  var API_BASE = 'https://kospi-bets-api.onsecon.workers.dev';
+  function authUrl(provider){
+    var returnTo = encodeURIComponent(location.origin + '/');
+    return API_BASE + '/api/auth/' + provider + '/start?return_to=' + returnTo;
+  }
+  function renderAccount(me){
+    var el = document.getElementById('kh-account');
+    if (!el) return;
+    if (!me || !me.user || me.user.auth_provider === 'anon') {
+      el.innerHTML = '<div class="kh-account-guest">' +
+        '<button class="kh-account-btn" onclick="location.href=\'' + authUrl('google') + '\'">구글 로그인</button>' +
+        '<button class="kh-account-btn" onclick="location.href=\'' + authUrl('kakao') + '\'">카카오 로그인</button>' +
+        '</div>';
+      return;
+    }
+    var name = me.user.display_name || me.user.nickname || '사용자';
+    var points = Number(me.user.points || 0).toLocaleString('ko-KR');
+    el.innerHTML = '<a href="/bet.html" class="kh-account-user" style="text-decoration:none">' +
+      '<span class="kh-account-avatar"></span>' +
+      '<span class="kh-account-name">' + name + '</span>' +
+      '<span class="kh-account-points">' + points + 'P</span>' +
+      '</a>';
+  }
+  fetch(API_BASE + '/api/me', { credentials: 'include' })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(renderAccount)
+    .catch(function(){ renderAccount(null); });
 })();
 </script>
 </body>
