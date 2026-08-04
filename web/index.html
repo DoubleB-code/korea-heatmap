@@ -361,17 +361,31 @@
     .search { width: 140px; }
   }
   @media (max-width: 700px) {
-    /* 모바일: 페이지 자체 스크롤 가능, 트리맵 세로로 길게 */
+    /* 모바일: 페이지 자체 스크롤 가능, 트리맵 세로로 길게. PC와 정보 구성은 동일하게 유지 (광고/통계/범례 모두 노출, 배치만 압축) */
     html, body { overflow-y: auto; height: auto; min-height: 100%; }
     #app { height: auto; min-height: 100vh; }
-    main { overflow: visible; height: auto; }
-    #treemap-wrap { min-height: 2800px; height: 2800px; }
-    header.topbar { position: sticky; top: 0; z-index: 50; }
-    .kh-side { display: none; }
+    main { overflow: visible; height: auto; flex-direction: column; }
+    #treemap-wrap { min-height: 2000px; height: 2000px; order: 2; }
+    header.topbar { position: sticky; top: 0; z-index: 50; flex-wrap: wrap; row-gap: 8px; }
+    /* 광고 사이드바 -> 상단 가로 스크롤 배너로 전환 (숨기지 않고 유지) */
+    .kh-side {
+      order: 1; width: 100%; flex-direction: row; flex-shrink: 0;
+      padding: 8px 10px; gap: 10px; overflow-x: auto; overflow-y: visible;
+      border-right: none; border-bottom: 1px solid #1a1a1a;
+    }
+    .kh-tall { min-height: 0; height: 180px; width: 140px; flex-shrink: 0; }
+    .kh-box { min-height: 0; height: 140px; width: 140px; margin-top: 0; flex-shrink: 0; }
+    .kh-side-fallback img { width: 140px; height: 180px; object-fit: cover; object-position: top; }
+    .kh-self-cta-title { font-size: 12px; }
+    .kh-self-cta-desc { font-size: 8px; }
+    .kh-self-cta-arrow { font-size: 9px; }
+    #portfolio-toolbar-slot { order: 3; }
     .brand .tagline { display: none; }
     .brand .logo { font-size: 15px; }
-    .index-info { gap: 10px; font-size: 11px; }
-    .index-info > div:nth-child(3) { display: none; }
+    /* 통계는 숨기지 않고 가로 스크롤로 전부 노출 */
+    .index-info { gap: 14px; font-size: 11px; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+    .index-info > div { flex-shrink: 0; }
+    .controls { flex-wrap: wrap; row-gap: 6px; }
     .controls .seg { display: none; }
     .search { width: 110px; padding: 6px 10px; font-size: 11px; }
     .pf-toggle { padding: 6px 10px; font-size: 11px; }
@@ -380,6 +394,8 @@
     .modal-card { width: 92vw; padding: 16px 18px; }
     .modal-name { font-size: 16px; }
     .modal-pct { font-size: 22px; }
+    /* 범례는 숨기지 않고 축소해서 하단 고정 */
+    .legend { transform: scale(0.85); transform-origin: left center; }
     /* 포트폴리오 모바일에서는 오버레이 모드 */
     #portfolio:not(.hidden) {
       position: fixed; top: 0; right: 0; bottom: 0;
@@ -388,13 +404,17 @@
     }
   }
   @media (max-width: 640px) {
-    header.topbar { padding: 8px 12px; flex-wrap: nowrap; gap: 6px; }
+    header.topbar { padding: 8px 12px; flex-wrap: wrap; gap: 6px; }
     .brand .logo { font-size: 15px; }
-    .index-info { display: none; }
+    /* 통계 숨기지 않고 가로 스크롤 유지 (700px 규칙 계승), 폰트만 더 축소 */
+    .index-info { font-size: 10px; gap: 10px; }
     .search { width: 100px; padding: 5px 8px; }
     .pf-toggle span { display: none; }
     footer.statusbar { font-size: 9px; padding: 6px 12px; flex-wrap: wrap; gap: 6px; }
-    .legend { display: none; }
+    /* 범례 숨기지 않고 아주 작게 축소 */
+    .legend { transform: scale(0.7); transform-origin: left center; }
+    .kh-account { order: -1; width: 100%; justify-content: flex-end; }
+    .kh-account-name { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   }
   /* ===== 인터스티셜(전면) 광고 ===== */
   .kh-promo {
@@ -604,7 +624,7 @@
     <div>
       <span id="footer-date">—</span>
       <span class="delay-badge">실시간</span>
-      <span style="margin-left:12px;">데이터: Yahoo Finance (yfinance) · 분류: 자체 매핑 · 클릭 → 종목 정보 팝업</span>
+      <span style="margin-left:12px;">데이터: 한국거래소(KRX) Open API · 분류: 자체 매핑 · 클릭 → 종목 정보 팝업</span>
     </div>
     <div class="legend">
       <span class="label lo">−3%</span>
@@ -1206,7 +1226,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeStock
       <h3 style="color:#d1d5db;font-size:14px;margin:0 0 8px">섹터 분류</h3>
       <p style="margin:0 0 14px">KOSPI 200 종목은 에너지, 소재, 산업재, 경기소비재, 필수소비재, 헬스케어, 금융, IT, 통신서비스, 유틸리티 등 10개 섹터로 분류됩니다. 섹터별 그룹화로 특정 업종의 흐름을 쉽게 파악할 수 있습니다.</p>
       <h3 style="color:#d1d5db;font-size:14px;margin:0 0 8px">데이터 출처 및 갱신</h3>
-      <p style="margin:0 0 14px">주가 데이터는 한국거래소(KRX) 공개 데이터를 PyKRX 라이브러리를 통해 수집합니다. 매 영업일 오전 9시 30분부터 오후 5시 30분까지 매시간 자동 갱신됩니다. 휴장일에는 갱신이 생략되며 직전 영업일 종가 기준으로 표시됩니다.</p>
+      <p style="margin:0 0 14px">주가 데이터는 한국거래소(KRX) Open API를 통해 공식적으로 수집합니다. 매 영업일 오전 9시 30분부터 오후 5시 30분까지 매시간 자동 갱신됩니다. 휴장일에는 갱신이 생략되며 직전 영업일 종가 기준으로 표시됩니다.</p>
       <p style="margin:0;color:#6b7280;font-size:11px">본 서비스는 정보 제공 목적이며 투자 판단의 근거로 활용할 수 없습니다. 주식 투자는 원금 손실 가능성이 있으며 투자 결과에 대한 책임은 투자자 본인에게 있습니다.</p>
     </div>
   </div>
