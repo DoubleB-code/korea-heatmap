@@ -377,31 +377,18 @@
     .search { width: 140px; }
   }
   @media (max-width: 700px) {
-    /* 모바일: 페이지 자체 스크롤 가능, 트리맵 세로로 길게. PC와 정보 구성은 동일하게 유지 (광고/통계/범례 모두 노출, 배치만 압축) */
+    /* 모바일: 페이지 자체 스크롤 가능, 트리맵 세로로 길게 (기존 동작 유지) */
     html, body { overflow-y: auto; height: auto; min-height: 100%; }
     #app { height: auto; min-height: 100vh; }
-    main { overflow: visible; height: auto; flex-direction: column; }
-    #treemap-wrap { min-height: 2000px; height: 2000px; order: 2; }
-    header.topbar { position: sticky; top: 0; z-index: 50; flex-wrap: wrap; row-gap: 8px; }
-    /* 광고 사이드바 -> 상단 가로 스크롤 배너로 전환 (숨기지 않고 유지) */
-    .kh-side {
-      order: 1; width: 100%; flex-direction: row; flex-shrink: 0;
-      padding: 8px 10px; gap: 10px; overflow-x: auto; overflow-y: visible;
-      border-right: none; border-bottom: 1px solid #1a1a1a;
-    }
-    .kh-tall { min-height: 0; height: 180px; width: 140px; flex-shrink: 0; }
-    .kh-box { min-height: 0; height: 140px; width: 140px; margin-top: 0; flex-shrink: 0; }
-    .kh-side-fallback img { width: 140px; height: 180px; object-fit: cover; object-position: top; }
-    .kh-self-cta-title { font-size: 12px; }
-    .kh-self-cta-desc { font-size: 8px; }
-    .kh-self-cta-arrow { font-size: 9px; }
-    #portfolio-toolbar-slot { order: 3; }
+    main { overflow: visible; height: auto; }
+    #treemap-wrap { min-height: 2800px; height: 2800px; }
+    header.topbar { position: sticky; top: 0; z-index: 50; }
+    .kh-side { display: none; }
     .brand .tagline { display: none; }
     .brand .logo { font-size: 15px; }
     /* 통계는 숨기지 않고 가로 스크롤로 전부 노출 */
-    .index-info { gap: 14px; font-size: 11px; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+    .index-info { gap: 14px; font-size: 11px; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; max-width: 100%; }
     .index-info > div { flex-shrink: 0; }
-    .controls { flex-wrap: wrap; row-gap: 6px; }
     .controls .seg { display: none; }
     .search { width: 110px; padding: 6px 10px; font-size: 11px; }
     .pf-toggle { padding: 6px 10px; font-size: 11px; }
@@ -410,7 +397,7 @@
     .modal-card { width: 92vw; padding: 16px 18px; }
     .modal-name { font-size: 16px; }
     .modal-pct { font-size: 22px; }
-    /* 범례는 숨기지 않고 축소해서 하단 고정 */
+    /* 범례는 숨기지 않고 축소 */
     .legend { transform: scale(0.85); transform-origin: left center; }
     /* 포트폴리오 모바일에서는 오버레이 모드 */
     #portfolio:not(.hidden) {
@@ -1353,8 +1340,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeStock
     if (!el) return;
     if (!me || !me.user || me.user.auth_provider === 'anon') {
       el.innerHTML = '<div class="kh-account-guest">' +
-        '<button class="kh-account-btn" onclick="location.href=\'' + authUrl('google') + '\'">구글 로그인</button>' +
-        '<button class="kh-account-btn" onclick="location.href=\'' + authUrl('kakao') + '\'">카카오 로그인</button>' +
+        '<button class="kh-account-btn kh-account-login" onclick="location.href=\'/bet.html\'">로그인</button>' +
         '</div>';
       return;
     }
