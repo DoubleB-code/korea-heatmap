@@ -1,68 +1,37 @@
-"""fetch_kospi200, resolve_business_day mocking tests (yfinance)."""
+"""fetch_kospi200, resolve_business_day mocking tests (KRX Open API)."""
 import pytest
-import pandas as pd
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import fetch_data
 
 
 @pytest.fixture(autouse=True)
 def fast(monkeypatch):
     monkeypatch.setattr(fetch_data, "BACKOFF_BASE", 0.001)
-    monkeypatch.setattr(fetch_data, "PER_REQUEST_DELAY", 0.0)
-    monkeypatch.setattr(fetch_data, "MARCAP_WORKERS", 2)
+    monkeypatch.setenv("KRX_AUTH_KEY", "test-key")
 
 
-def make_yf_download_df(codes):
-    """Mock yf.download() multi-ticker MultiIndex DataFrame."""
-    dates = pd.date_range("2026-04-30", periods=5)
-    cols = []
-    data = {}
-    for c in codes:
-        sym = f"{c}.KS"
-        for col in ["Open", "High", "Low", "Close", "Volume"]:
-            cols.append((sym, col))
-            if col == "Close":
-                if c == "005930":
-                    data[(sym, col)] = [76000, 76500, 77000, 77000, 78000]
-                elif c == "000660":
-                    data[(sym, col)] = [131000, 130800, 131200, 130800, 130000]
-                elif c == "207940":
-                    data[(sym, col)] = [1080000, 1085000, 1090000, 1083000, 1100000]
-                else:
-                    data[(sym, col)] = [1000, 1010, 1020, 1015, 1020]
-            else:
-                data[(sym, col)] = [0] * 5
-    multi = pd.MultiIndex.from_tuples(cols)
-    df = pd.DataFrame(data, index=dates, columns=multi)
-    return df
-
-
-def make_fast_info(cap):
-    fi = MagicMock()
-    fi.get = MagicMock(return_value=cap)
-    return fi
+def make_krx_row(code, close, change_pct, mktcap):
+    return {
+        "ISU_SRT_CD": code,
+        "TDD_CLSPRC": str(close),
+        "FLUC_RT": str(change_pct),
+        "MKTCAP": str(mktcap),
+    }
 
 
 class TestFetchKospi200:
-    def test_basic(self, monkeypatch):
+    def test_basic(self, monkeypatch, tmp_path):
         codes = ["000660", "005930", "207940"]
         monkeypatch.setattr(fetch_data, "load_universe", lambda: codes)
+        monkeypatch.setattr(fetch_data, "OUT_FILE", tmp_path / "treemap.json")
 
-        df = make_yf_download_df(codes)
-        marcap_map = {
-            "005930": 470_000_000_000_000,
-            "000660": 152_000_000_000_000,
-            "207940": 72_000_000_000_000,
-        }
+        rows_resp = [
+            make_krx_row("005930", 78000, 1.30, 470_000_000_000_000),
+            make_krx_row("000660", 130000, -0.61, 152_000_000_000_000),
+            make_krx_row("207940", 1100000, 1.57, 72_000_000_000_000),
+        ]
 
-        def fake_ticker(sym):
-            t = MagicMock()
-            code = sym.replace(".KS", "")
-            t.fast_info = make_fast_info(marcap_map.get(code, 0))
-            return t
-
-        with patch("fetch_data.yf.download", return_value=df), \
-             patch("fetch_data.yf.Ticker", side_effect=fake_ticker):
+        with patch("fetch_data._krx_get", return_value=rows_resp):
             rows = fetch_data.fetch_kospi200("20260506")
 
         assert len(rows) == 3
@@ -74,52 +43,84 @@ class TestFetchKospi200:
         assert s["value"] == 4_700_000
         assert s["price"] == 78000
         assert s["sector"] == "IT"
-        assert abs(s["change"] - 1.30) < 0.05
+        assert abs(s["change"] - 1.30) < 0.01
+        assert s["spark"] == [78000]
 
-    def test_skips_zero_marcap(self, monkeypatch):
+    def test_skips_zero_marcap(self, monkeypatch, tmp_path):
         codes = ["005930", "000660"]
         monkeypatch.setattr(fetch_data, "load_universe", lambda: codes)
+        monkeypatch.setattr(fetch_data, "OUT_FILE", tmp_path / "treemap.json")
 
-        df = make_yf_download_df(codes)
+        rows_resp = [
+            make_krx_row("005930", 78000, 1.30, 470_000_000_000_000),
+            make_krx_row("000660", 130000, -0.61, 0),
+        ]
 
-        def fake_ticker(sym):
-            t = MagicMock()
-            cap = 470_000_000_000_000 if "005930" in sym else 0
-            t.fast_info = make_fast_info(cap)
-            return t
-
-        with patch("fetch_data.yf.download", return_value=df), \
-             patch("fetch_data.yf.Ticker", side_effect=fake_ticker):
+        with patch("fetch_data._krx_get", return_value=rows_resp):
             rows = fetch_data.fetch_kospi200("20260506")
 
         assert len(rows) == 1
         assert rows[0]["code"] == "005930"
 
-    def test_retry_on_yf_download_failure(self, monkeypatch):
+    def test_excludes_outlier_change_pct(self, monkeypatch, tmp_path):
+        codes = ["005930", "000660"]
+        monkeypatch.setattr(fetch_data, "load_universe", lambda: codes)
+        monkeypatch.setattr(fetch_data, "OUT_FILE", tmp_path / "treemap.json")
+
+        rows_resp = [
+            make_krx_row("005930", 78000, 1.30, 470_000_000_000_000),
+            make_krx_row("000660", 130000, 45.0, 152_000_000_000_000),
+        ]
+
+        with patch("fetch_data._krx_get", return_value=rows_resp):
+            rows = fetch_data.fetch_kospi200("20260506")
+
+        assert len(rows) == 1
+        assert rows[0]["code"] == "005930"
+
+    def test_retry_on_krx_failure(self, monkeypatch, tmp_path):
         codes = ["005930"]
         monkeypatch.setattr(fetch_data, "load_universe", lambda: codes)
+        monkeypatch.setattr(fetch_data, "OUT_FILE", tmp_path / "treemap.json")
 
-        df = make_yf_download_df(codes)
-        marcap = 470_000_000_000_000
+        rows_resp = [make_krx_row("005930", 78000, 1.30, 470_000_000_000_000)]
         call_count = [0]
 
-        def flaky_download(*args, **kwargs):
+        def flaky_get(api_id, params):
             call_count[0] += 1
             if call_count[0] < 2:
                 raise ConnectionError("flaky")
-            return df
+            return rows_resp
 
-        def fake_ticker(sym):
-            t = MagicMock()
-            t.fast_info = make_fast_info(marcap)
-            return t
-
-        with patch("fetch_data.yf.download", side_effect=flaky_download), \
-             patch("fetch_data.yf.Ticker", side_effect=fake_ticker):
+        with patch("fetch_data._krx_get", side_effect=flaky_get):
             rows = fetch_data.fetch_kospi200("20260506")
 
         assert len(rows) == 1
         assert call_count[0] == 2
+
+    def test_spark_rolls_forward_from_previous_snapshot(self, monkeypatch, tmp_path):
+        import json
+
+        codes = ["005930"]
+        monkeypatch.setattr(fetch_data, "load_universe", lambda: codes)
+        out_file = tmp_path / "treemap.json"
+        monkeypatch.setattr(fetch_data, "OUT_FILE", out_file)
+
+        prev_tree = {
+            "as_of": "20260505",
+            "children": [
+                {"name": "IT", "children": [
+                    {"code": "005930", "name": "삼성전자", "spark": [76000, 77000, 77500]}
+                ]}
+            ],
+        }
+        out_file.write_text(json.dumps(prev_tree), encoding="utf-8")
+
+        rows_resp = [make_krx_row("005930", 78000, 0.65, 470_000_000_000_000)]
+        with patch("fetch_data._krx_get", return_value=rows_resp):
+            rows = fetch_data.fetch_kospi200("20260506")
+
+        assert rows[0]["spark"] == [76000, 77000, 77500, 78000]
 
 
 class TestResolveBusinessDay:
@@ -138,10 +139,6 @@ class TestUniverse:
         codes = fetch_data.load_universe()
         assert len(codes) > 100
         assert all(len(c) == 6 and c.isdigit() for c in codes)
-
-    def test_to_yf_symbol(self):
-        assert fetch_data.to_yf_symbol("005930") == "005930.KS"
-        assert fetch_data.to_yf_symbol("5930") == "005930.KS"
 
 
 class TestKoreanNames:
