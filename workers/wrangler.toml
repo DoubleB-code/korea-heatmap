@@ -25,6 +25,15 @@ DEAD_ZONE_PCT = "0.1"
 [env.production]
 name = "kospi-bets-api"
 
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "kospi-bets"
+database_id = "1aed5a58-1554-493a-99f1-439553522a94"
+migrations_dir = "migrations"
+
+[env.production.triggers]
+crons = ["30 8 * * 1-5"]
+
 [env.production.vars]
 ALLOWED_ORIGINS = "https://koreaheatmap.com,https://korea-heatmap.onsecon.workers.dev"
 COOKIE_DOMAIN = ".workers.dev"
