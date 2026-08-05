@@ -2,7 +2,8 @@ name: Update KOSPI 200
 
 on:
   schedule:
-    - cron: '30 23 * * 0-4'
+    # KST 09:00~16:00 장중 매시간 (네이버페이 증권 실시간 API 기반, 더 이상 T-1 제약 없음)
+    - cron: '0 0-7 * * 1-5'
   workflow_dispatch:
     inputs:
       retry_count:
@@ -52,7 +53,6 @@ jobs:
       - name: Fetch KOSPI 200 (shell retry 3, KST timezone)
         env:
           PYTHONUNBUFFERED: "1"
-          KRX_AUTH_KEY: ${{ secrets.KRX_AUTH_KEY }}
         run: |
           cd ingest
           for attempt in 1 2 3; do
