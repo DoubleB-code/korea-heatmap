@@ -1,19 +1,18 @@
 """
-KOSPI 200 일별 스냅샷 수집 (KRX Open API 기반).
+KOSPI 200 스냅샷 수집 (네이버페이 증권 실시간 API 기반).
 
 수집 소스 전환 이력:
 - PyKRX: KRX가 GitHub Actions IP를 차단해서 작동 불가
 - FinanceDataReader: 한국 종목에 대해 내부적으로 KRX/Naver fchart 호출 -> 동일 차단 문제
 - yfinance: 100% Yahoo Finance -- 종목 간 데이터가 간헐적으로 어긋나는 신뢰성 문제 발견 (2026-08)
-- KRX Open API: 한국거래소 공식 API. 인증키 기반, 하루 10,000회 한도, 실제로는 하루 3회 미만 사용.
-  등락률/종가/시가총액을 거래소가 직접 계산해서 내려주므로 프론트에서 재계산할 필요가 없고,
-  전 종목이 단일 호출로 한번에 내려오기 때문에 종목 간 데이터 정합성 문제가 근본적으로 사라짐.
+- KRX Open API: 한국거래소 공식 API. 인증키 기반이나 T-1(전일 종가)만 제공 -- 장중 갱신 불가능해서
+  하루 여러 번 돌려도 의미가 없었음 (2026-08).
+- 네이버페이 증권 모바일 API (m.stock.naver.com): 비공식이지만 실시간(delayTime=0) 시세를 제공.
+  종목 페이지당 100개씩 페이지네이션으로 KOSPI/KOSDAQ 전체를 조회해 시가총액 상위 정렬에서
+  우리 유니버스(TICKER_TO_SECTOR) 코드를 매칭한다. 장중 여러 번 폴링해 실시간성을 확보한다.
 
-Universe (200 종목):
+Universe (약 200 종목):
 - sectors.TICKER_TO_SECTOR 의 keys 가 KOSPI 200 ticker 리스트 (분기 1회 수동 갱신)
-
-인증:
-- 환경변수 KRX_AUTH_KEY 필요 (GitHub Actions Secrets 에 등록, 코드/레포에는 절대 커밋하지 않음)
 
 종료 코드:
     0  성공 또는 휴장일 SKIP
@@ -24,7 +23,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -50,8 +48,9 @@ MAX_RETRIES = 3
 BACKOFF_BASE = 1.0
 SPARK_DAYS = 30
 
-KRX_BASE_URL = "https://data-dbg.krx.co.kr/svc/apis/sto"
-KRX_DAILY_TRADE_API = "stk_bydd_trd"
+NAVER_BULK_URL = "https://m.stock.naver.com/api/stocks/marketValue/{market}"
+NAVER_MARKETS = {"KOSPI": 15, "KOSDAQ": 8}  # market -> 조회할 페이지 수 (pageSize=100)
+NAVER_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; KoreaHeatmapBot/1.0)"}
 
 KOREAN_NAMES = {
     "005930": "삼성전자",
@@ -297,17 +296,6 @@ def resolve_business_day(requested):
     return fallback, fallback == today
 
 
-def krx_available_date(date_str):
-    """KRX Open API는 당일(장중) 데이터를 제공하지 않고, 완료된 직전 영업일
-    데이터를 익일 오전에 게시한다. 따라서 실제로 조회 가능한 가장 최근 영업일
-    (주말만 스킵, 공휴일은 빈 응답으로 감지해 fetch_daily_trade 쪽에서 추가 보정)
-    을 하루 전 기준으로 계산해서 반환한다."""
-    dt = datetime.strptime(date_str, "%Y%m%d") - timedelta(days=1)
-    while dt.weekday() >= 5:
-        dt -= timedelta(days=1)
-    return dt.strftime("%Y%m%d")
-
-
 def load_universe():
     codes = sorted(TICKER_TO_SECTOR.keys())
     log.info("Universe loaded: %d codes (sectors.TICKER_TO_SECTOR)", len(codes))
@@ -318,29 +306,6 @@ def resolve_name(code):
     return KOREAN_NAMES.get(code, code)
 
 
-def _get_auth_key():
-    key = os.environ.get("KRX_AUTH_KEY", "").strip()
-    if not key:
-        raise RuntimeError("환경변수 KRX_AUTH_KEY 가 설정되지 않았습니다")
-    return key
-
-
-def _krx_get(api_id, params):
-    auth_key = _get_auth_key()
-    url = f"{KRX_BASE_URL}/{api_id}.json"
-
-    def _call():
-        resp = requests.get(url, params=params, headers={"AUTH_KEY": auth_key}, timeout=20)
-        if resp.status_code != 200:
-            raise RuntimeError(f"KRX API {resp.status_code}: {resp.text[:200]}")
-        data = resp.json()
-        if "OutBlock_1" not in data:
-            raise RuntimeError(f"KRX API 응답에 OutBlock_1 없음: {data}")
-        return data["OutBlock_1"]
-
-    return with_retry(_call, _label=f"KRX {api_id}")
-
-
 def _to_num(s, cast=float):
     try:
         return cast(str(s).replace(",", ""))
@@ -348,23 +313,46 @@ def _to_num(s, cast=float):
         return None
 
 
-def fetch_daily_trade(bas_dd):
-    """유가증권시장 전 종목의 당일 매매정보를 단일 호출로 수집."""
-    rows = _krx_get(KRX_DAILY_TRADE_API, {"basDd": bas_dd})
-    log.info("KRX stk_bydd_trd: %d rows (전체 유가증권시장)", len(rows))
+def _naver_get_page(market, page):
+    def _call():
+        resp = requests.get(
+            NAVER_BULK_URL.format(market=market),
+            params={"page": page, "pageSize": 100},
+            headers=NAVER_HEADERS,
+            timeout=15,
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(f"Naver API {market} p{page} {resp.status_code}: {resp.text[:200]}")
+        data = resp.json()
+        if "stocks" not in data:
+            raise RuntimeError(f"Naver API 응답에 stocks 없음: {data}")
+        return data
+
+    return with_retry(_call, _label=f"Naver {market} p{page}")
+
+
+def fetch_naver_bulk():
+    """네이버페이 증권 실시간 시세를 KOSPI/KOSDAQ 페이지네이션으로 수집."""
     out = {}
-    for r in rows:
-        code = r.get("ISU_SRT_CD") or r.get("ISU_CD", "")[-6:]
-        close = _to_num(r.get("TDD_CLSPRC"))
-        change_pct = _to_num(r.get("FLUC_RT"))
-        mktcap = _to_num(r.get("MKTCAP"), cast=int)
-        if not code or close is None or change_pct is None:
-            continue
-        out[code] = {
-            "today_close": close,
-            "change_pct": round(change_pct, 2),
-            "market_cap": mktcap or 0,
-        }
+    for market, max_pages in NAVER_MARKETS.items():
+        for page in range(1, max_pages + 1):
+            data = _naver_get_page(market, page)
+            stocks = data.get("stocks") or []
+            if not stocks:
+                break
+            for s in stocks:
+                code = s.get("itemCode")
+                close = _to_num(s.get("closePriceRaw"), cast=int)
+                change_pct = _to_num(s.get("fluctuationsRatio"))
+                cap = _to_num(s.get("marketValueRaw"), cast=int)
+                if not code or close is None or change_pct is None:
+                    continue
+                out[code] = {
+                    "today_close": close,
+                    "change_pct": round(change_pct, 2),
+                    "market_cap": cap or 0,
+                }
+    log.info("Naver bulk: %d unique codes collected (KOSPI+KOSDAQ)", len(out))
     return out
 
 
@@ -392,33 +380,18 @@ def _prev_sparks(prev_tree):
 
 
 def fetch_kospi200(date):
-    # KRX Open API는 당일 데이터를 제공하지 않으므로, 실제로 게시된 가장 최근
-    # 완료 영업일을 역순으로 탐색한다 (공휴일 등으로 하루 더 밀릴 수 있음).
-    candidate = krx_available_date(date)
+    """date 인자는 하위호환용으로만 받고, 실제 기준일은 네이버 실시간 응답을 받은
+    시점의 KST 날짜를 사용한다 (장중이면 오늘, 장마감/휴장이면 마지막 거래일 종가)."""
+    actual_date = date or datetime.now(KST).strftime("%Y%m%d")
     codes = load_universe()
-    trade = None
-    actual_date = candidate
-    for attempt in range(5):
-        log.info("Trying KRX data for %s (KRX Open API)", candidate)
-        trade = fetch_daily_trade(candidate)
-        if trade:
-            actual_date = candidate
-            break
-        log.warning("%s: 데이터 없음 (공휴일 추정), 하루 전으로 재시도", candidate)
-        dt = datetime.strptime(candidate, "%Y%m%d") - timedelta(days=1)
-        while dt.weekday() >= 5:
-            dt -= timedelta(days=1)
-        candidate = dt.strftime("%Y%m%d")
 
-    date = actual_date
-    log.info("Reference date resolved: %s (KRX Open API)", date)
-
+    trade = fetch_naver_bulk()
     if not trade:
-        raise RuntimeError("No prices collected -- KRX API 응답 오류")
+        raise RuntimeError("No prices collected -- Naver API 응답 오류")
 
     prev_tree = _load_previous_tree()
     prev_sparks, prev_date = _prev_sparks(prev_tree)
-    is_rerun_same_day = prev_date == date
+    is_rerun_same_day = prev_date == actual_date
 
     rows = []
     skipped = 0
@@ -463,5 +436,10 @@ def fetch_kospi200(date):
             f"(이상치 {outliers}종목 / 전체 {len(codes)}종목)"
         )
 
+    if len(rows) < MIN_STOCKS:
+        raise RuntimeError(
+            f"수집된 종목 수 {len(rows)} < 최소 기준 {MIN_STOCKS} -- Naver API 응답 불완전"
+        )
+
     log.info("Collection complete: %d stocks (skipped %d)", len(rows), skipped)
-    return date, rows
+    return actual_date, rows
