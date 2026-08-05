@@ -1,6 +1,6 @@
 """fetch_kospi200, resolve_business_day mocking tests (KRX Open API)."""
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import fetch_data
 
 
@@ -63,7 +63,10 @@ class TestFetchKospi200:
         assert rows[0]["code"] == "005930"
 
     def test_excludes_outlier_change_pct(self, monkeypatch, tmp_path):
-        codes = ["005930", "000660"]
+        # 이상치 서킷브레이커(5%)를 건드리지 않도록 충분히 큰 유니버스 사용
+        codes = [f"{i:06d}" for i in range(30)]
+        codes[0] = "005930"
+        codes[1] = "000660"
         monkeypatch.setattr(fetch_data, "load_universe", lambda: codes)
         monkeypatch.setattr(fetch_data, "OUT_FILE", tmp_path / "treemap.json")
 
@@ -86,13 +89,16 @@ class TestFetchKospi200:
         rows_resp = [make_krx_row("005930", 78000, 1.30, 470_000_000_000_000)]
         call_count = [0]
 
-        def flaky_get(api_id, params):
+        def flaky_requests_get(url, params=None, headers=None, timeout=None):
             call_count[0] += 1
             if call_count[0] < 2:
                 raise ConnectionError("flaky")
-            return rows_resp
+            resp = MagicMock()
+            resp.status_code = 200
+            resp.json.return_value = {"OutBlock_1": rows_resp}
+            return resp
 
-        with patch("fetch_data._krx_get", side_effect=flaky_get):
+        with patch("fetch_data.requests.get", side_effect=flaky_requests_get):
             rows = fetch_data.fetch_kospi200("20260506")
 
         assert len(rows) == 1
