@@ -89,7 +89,7 @@ def main():
         return 0
 
     try:
-        rows = fetch_kospi200(date)
+        date, rows = fetch_kospi200(date)
     except Exception as exc:
         meta["consecutive_failures"] += 1
         meta["last_error"] = f"fetch_kospi200: {exc}"
