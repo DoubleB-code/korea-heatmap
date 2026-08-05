@@ -297,6 +297,17 @@ def resolve_business_day(requested):
     return fallback, fallback == today
 
 
+def krx_available_date(date_str):
+    """KRX Open API는 당일(장중) 데이터를 제공하지 않고, 완료된 직전 영업일
+    데이터를 익일 오전에 게시한다. 따라서 실제로 조회 가능한 가장 최근 영업일
+    (주말만 스킵, 공휴일은 빈 응답으로 감지해 fetch_daily_trade 쪽에서 추가 보정)
+    을 하루 전 기준으로 계산해서 반환한다."""
+    dt = datetime.strptime(date_str, "%Y%m%d") - timedelta(days=1)
+    while dt.weekday() >= 5:
+        dt -= timedelta(days=1)
+    return dt.strftime("%Y%m%d")
+
+
 def load_universe():
     codes = sorted(TICKER_TO_SECTOR.keys())
     log.info("Universe loaded: %d codes (sectors.TICKER_TO_SECTOR)", len(codes))
@@ -381,10 +392,27 @@ def _prev_sparks(prev_tree):
 
 
 def fetch_kospi200(date):
-    log.info("Reference date: %s (KRX Open API)", date)
-
+    # KRX Open API는 당일 데이터를 제공하지 않으므로, 실제로 게시된 가장 최근
+    # 완료 영업일을 역순으로 탐색한다 (공휴일 등으로 하루 더 밀릴 수 있음).
+    candidate = krx_available_date(date)
     codes = load_universe()
-    trade = fetch_daily_trade(date)
+    trade = None
+    actual_date = candidate
+    for attempt in range(5):
+        log.info("Trying KRX data for %s (KRX Open API)", candidate)
+        trade = fetch_daily_trade(candidate)
+        if trade:
+            actual_date = candidate
+            break
+        log.warning("%s: 데이터 없음 (공휴일 추정), 하루 전으로 재시도", candidate)
+        dt = datetime.strptime(candidate, "%Y%m%d") - timedelta(days=1)
+        while dt.weekday() >= 5:
+            dt -= timedelta(days=1)
+        candidate = dt.strftime("%Y%m%d")
+
+    date = actual_date
+    log.info("Reference date resolved: %s (KRX Open API)", date)
+
     if not trade:
         raise RuntimeError("No prices collected -- KRX API 응답 오류")
 
@@ -436,4 +464,4 @@ def fetch_kospi200(date):
         )
 
     log.info("Collection complete: %d stocks (skipped %d)", len(rows), skipped)
-    return rows
+    return date, rows
