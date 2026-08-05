@@ -32,7 +32,7 @@ class TestFetchKospi200:
         ]
 
         with patch("fetch_data._krx_get", return_value=rows_resp):
-            rows = fetch_data.fetch_kospi200("20260506")
+            _, rows = fetch_data.fetch_kospi200("20260506")
 
         assert len(rows) == 3
         codes_out = sorted(r["code"] for r in rows)
@@ -57,7 +57,7 @@ class TestFetchKospi200:
         ]
 
         with patch("fetch_data._krx_get", return_value=rows_resp):
-            rows = fetch_data.fetch_kospi200("20260506")
+            _, rows = fetch_data.fetch_kospi200("20260506")
 
         assert len(rows) == 1
         assert rows[0]["code"] == "005930"
@@ -76,7 +76,7 @@ class TestFetchKospi200:
         ]
 
         with patch("fetch_data._krx_get", return_value=rows_resp):
-            rows = fetch_data.fetch_kospi200("20260506")
+            _, rows = fetch_data.fetch_kospi200("20260506")
 
         assert len(rows) == 1
         assert rows[0]["code"] == "005930"
@@ -99,7 +99,7 @@ class TestFetchKospi200:
             return resp
 
         with patch("fetch_data.requests.get", side_effect=flaky_requests_get):
-            rows = fetch_data.fetch_kospi200("20260506")
+            _, rows = fetch_data.fetch_kospi200("20260506")
 
         assert len(rows) == 1
         assert call_count[0] == 2
@@ -113,7 +113,7 @@ class TestFetchKospi200:
         monkeypatch.setattr(fetch_data, "OUT_FILE", out_file)
 
         prev_tree = {
-            "as_of": "20260505",
+            "as_of": "20260504",
             "children": [
                 {"name": "IT", "children": [
                     {"code": "005930", "name": "삼성전자", "spark": [76000, 77000, 77500]}
@@ -124,7 +124,7 @@ class TestFetchKospi200:
 
         rows_resp = [make_krx_row("005930", 78000, 0.65, 470_000_000_000_000)]
         with patch("fetch_data._krx_get", return_value=rows_resp):
-            rows = fetch_data.fetch_kospi200("20260506")
+            _, rows = fetch_data.fetch_kospi200("20260506")
 
         assert rows[0]["spark"] == [76000, 77000, 77500, 78000]
 
