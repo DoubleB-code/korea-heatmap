@@ -18,6 +18,7 @@ class TestFetchKospi200:
         codes = ["000660", "005930", "207940"]
         monkeypatch.setattr(fetch_data, "load_universe", lambda: codes)
         monkeypatch.setattr(fetch_data, "OUT_FILE", tmp_path / "treemap.json")
+        monkeypatch.setattr(fetch_data, "MIN_STOCKS", 1)
 
         bulk = {
             "005930": make_row(78000, 1.30, 470_000_000_000_000),
@@ -44,6 +45,7 @@ class TestFetchKospi200:
         codes = ["005930", "000660"]
         monkeypatch.setattr(fetch_data, "load_universe", lambda: codes)
         monkeypatch.setattr(fetch_data, "OUT_FILE", tmp_path / "treemap.json")
+        monkeypatch.setattr(fetch_data, "MIN_STOCKS", 1)
 
         bulk = {
             "005930": make_row(78000, 1.30, 470_000_000_000_000),
