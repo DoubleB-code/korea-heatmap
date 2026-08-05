@@ -1,4 +1,4 @@
-"""fetch_kospi200, resolve_business_day mocking tests (KRX Open API)."""
+"""fetch_kospi200, resolve_business_day mocking tests (네이버페이 증권 실시간 API)."""
 import pytest
 from unittest.mock import patch, MagicMock
 import fetch_data
@@ -7,16 +7,10 @@ import fetch_data
 @pytest.fixture(autouse=True)
 def fast(monkeypatch):
     monkeypatch.setattr(fetch_data, "BACKOFF_BASE", 0.001)
-    monkeypatch.setenv("KRX_AUTH_KEY", "test-key")
 
 
-def make_krx_row(code, close, change_pct, mktcap):
-    return {
-        "ISU_SRT_CD": code,
-        "TDD_CLSPRC": str(close),
-        "FLUC_RT": str(change_pct),
-        "MKTCAP": str(mktcap),
-    }
+def make_row(close, change_pct, mktcap):
+    return {"today_close": close, "change_pct": change_pct, "market_cap": mktcap}
 
 
 class TestFetchKospi200:
@@ -25,13 +19,13 @@ class TestFetchKospi200:
         monkeypatch.setattr(fetch_data, "load_universe", lambda: codes)
         monkeypatch.setattr(fetch_data, "OUT_FILE", tmp_path / "treemap.json")
 
-        rows_resp = [
-            make_krx_row("005930", 78000, 1.30, 470_000_000_000_000),
-            make_krx_row("000660", 130000, -0.61, 152_000_000_000_000),
-            make_krx_row("207940", 1100000, 1.57, 72_000_000_000_000),
-        ]
+        bulk = {
+            "005930": make_row(78000, 1.30, 470_000_000_000_000),
+            "000660": make_row(130000, -0.61, 152_000_000_000_000),
+            "207940": make_row(1100000, 1.57, 72_000_000_000_000),
+        }
 
-        with patch("fetch_data._krx_get", return_value=rows_resp):
+        with patch("fetch_data.fetch_naver_bulk", return_value=bulk):
             _, rows = fetch_data.fetch_kospi200("20260506")
 
         assert len(rows) == 3
@@ -51,12 +45,12 @@ class TestFetchKospi200:
         monkeypatch.setattr(fetch_data, "load_universe", lambda: codes)
         monkeypatch.setattr(fetch_data, "OUT_FILE", tmp_path / "treemap.json")
 
-        rows_resp = [
-            make_krx_row("005930", 78000, 1.30, 470_000_000_000_000),
-            make_krx_row("000660", 130000, -0.61, 0),
-        ]
+        bulk = {
+            "005930": make_row(78000, 1.30, 470_000_000_000_000),
+            "000660": make_row(130000, -0.61, 0),
+        }
 
-        with patch("fetch_data._krx_get", return_value=rows_resp):
+        with patch("fetch_data.fetch_naver_bulk", return_value=bulk):
             _, rows = fetch_data.fetch_kospi200("20260506")
 
         assert len(rows) == 1
@@ -69,24 +63,36 @@ class TestFetchKospi200:
         codes[1] = "000660"
         monkeypatch.setattr(fetch_data, "load_universe", lambda: codes)
         monkeypatch.setattr(fetch_data, "OUT_FILE", tmp_path / "treemap.json")
+        monkeypatch.setattr(fetch_data, "MIN_STOCKS", 1)
 
-        rows_resp = [
-            make_krx_row("005930", 78000, 1.30, 470_000_000_000_000),
-            make_krx_row("000660", 130000, 45.0, 152_000_000_000_000),
-        ]
+        bulk = {
+            "005930": make_row(78000, 1.30, 470_000_000_000_000),
+            "000660": make_row(130000, 45.0, 152_000_000_000_000),
+        }
 
-        with patch("fetch_data._krx_get", return_value=rows_resp):
+        with patch("fetch_data.fetch_naver_bulk", return_value=bulk):
             _, rows = fetch_data.fetch_kospi200("20260506")
 
         assert len(rows) == 1
         assert rows[0]["code"] == "005930"
 
-    def test_retry_on_krx_failure(self, monkeypatch, tmp_path):
+    def test_retry_on_naver_failure(self, monkeypatch, tmp_path):
         codes = ["005930"]
         monkeypatch.setattr(fetch_data, "load_universe", lambda: codes)
         monkeypatch.setattr(fetch_data, "OUT_FILE", tmp_path / "treemap.json")
+        monkeypatch.setattr(fetch_data, "MIN_STOCKS", 1)
+        monkeypatch.setattr(fetch_data, "NAVER_MARKETS", {"KOSPI": 1})
 
-        rows_resp = [make_krx_row("005930", 78000, 1.30, 470_000_000_000_000)]
+        page_resp = {
+            "stocks": [
+                {
+                    "itemCode": "005930",
+                    "closePriceRaw": "78000",
+                    "fluctuationsRatio": "1.30",
+                    "marketValueRaw": "470000000000000",
+                }
+            ]
+        }
         call_count = [0]
 
         def flaky_requests_get(url, params=None, headers=None, timeout=None):
@@ -95,7 +101,7 @@ class TestFetchKospi200:
                 raise ConnectionError("flaky")
             resp = MagicMock()
             resp.status_code = 200
-            resp.json.return_value = {"OutBlock_1": rows_resp}
+            resp.json.return_value = page_resp
             return resp
 
         with patch("fetch_data.requests.get", side_effect=flaky_requests_get):
@@ -111,6 +117,7 @@ class TestFetchKospi200:
         monkeypatch.setattr(fetch_data, "load_universe", lambda: codes)
         out_file = tmp_path / "treemap.json"
         monkeypatch.setattr(fetch_data, "OUT_FILE", out_file)
+        monkeypatch.setattr(fetch_data, "MIN_STOCKS", 1)
 
         prev_tree = {
             "as_of": "20260504",
@@ -122,8 +129,8 @@ class TestFetchKospi200:
         }
         out_file.write_text(json.dumps(prev_tree), encoding="utf-8")
 
-        rows_resp = [make_krx_row("005930", 78000, 0.65, 470_000_000_000_000)]
-        with patch("fetch_data._krx_get", return_value=rows_resp):
+        bulk = {"005930": make_row(78000, 0.65, 470_000_000_000_000)}
+        with patch("fetch_data.fetch_naver_bulk", return_value=bulk):
             _, rows = fetch_data.fetch_kospi200("20260506")
 
         assert rows[0]["spark"] == [76000, 77000, 77500, 78000]
