@@ -2,7 +2,7 @@ name: Update KOSPI 200
 
 on:
   schedule:
-    - cron: '0 0-7 * * 1-5'
+    - cron: '30 23 * * 0-4'
   workflow_dispatch:
     inputs:
       retry_count:
