@@ -2,7 +2,13 @@ name: Update KOSPI 200
 
 on:
   schedule:
-    - cron: '30 23 * * 0-4'
+    # 08:00~18:00 KST, 2시간마다 (KRX 게시 시각이 유동적이라 놓치지 않기 위한 폴링)
+    - cron: '0 23 * * 0-4'  # 08:00 KST
+    - cron: '0 1 * * 1-5'   # 10:00 KST
+    - cron: '0 3 * * 1-5'   # 12:00 KST
+    - cron: '0 5 * * 1-5'   # 14:00 KST
+    - cron: '0 7 * * 1-5'   # 16:00 KST
+    - cron: '0 9 * * 1-5'   # 18:00 KST
   workflow_dispatch:
     inputs:
       retry_count:
