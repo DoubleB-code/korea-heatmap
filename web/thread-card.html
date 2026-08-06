@@ -76,6 +76,7 @@
   <div id="card"></div>
 <script>
 function qs(name){ const u=new URL(location.href); return u.searchParams.get(name); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function renderCard(){
   const type = qs('type') || 'title';
   const card = document.getElementById('card');
@@ -86,14 +87,14 @@ function renderCard(){
     const isUp = data.pct >= 0;
     card.innerHTML = `
       <div class="row-top">
-        <div class="date">${data.date}</div>
-        <div class="pill">${data.dayLabel}</div>
+        <div class="date">${esc(data.date)}</div>
+        <div class="pill">${esc(data.dayLabel)}</div>
       </div>
-      <div class="headline">${data.headline}</div>
+      <div class="headline">${esc(data.headline)}</div>
       <div class="big-pct ${isUp?'up':'down'}">${isUp?'+':''}${data.pct.toFixed(2)}%</div>
       <div class="sub">KOSPI200 가중평균 등락률</div>
       <div class="stats">
-        <div class="stat-row"><span class="k">시가총액</span><span class="v">${data.marketCap}</span></div>
+        <div class="stat-row"><span class="k">시가총액</span><span class="v">${esc(data.marketCap)}</span></div>
         <div class="stat-row"><span class="k">종목수</span><span class="v">${data.stockCount}</span></div>
         <div class="stat-row"><span class="k">섹터 동향</span><span class="v">${data.sectorUp}↑ / ${data.sectorDown}↓</span></div>
       </div>
@@ -102,17 +103,17 @@ function renderCard(){
   } else if(type === 'story'){
     const items = data.items.map(it => `
       <div class="list-item">
-        <span class="name">${it.name}</span>
+        <span class="name">${esc(it.name)}</span>
         <span class="val ${it.value>=0?'up':'down'}">${it.value>=0?'+':''}${it.value.toFixed(2)}%</span>
       </div>
     `).join('');
     card.innerHTML = `
       <div class="top-bar"></div>
       <div class="content">
-        <div class="label">${data.label}</div>
-        <div class="headline2">${data.headline}</div>
+        <div class="label">${esc(data.label)}</div>
+        <div class="headline2">${esc(data.headline)}</div>
         <div class="list">${items}</div>
-        <div class="insight">${data.insight}</div>
+        <div class="insight">${esc(data.insight)}</div>
         <div class="site">koreaheatmap.com</div>
       </div>
     `;
@@ -126,13 +127,13 @@ function renderCard(){
     }
     const cells = data.items.slice(0,9).map(it => `
       <div class="movers-cell" style="background:${moversColor(it.value)}">
-        <span class="mn">${it.name}</span>
+        <span class="mn">${esc(it.name)}</span>
         <span class="mv" style="color:#fff">${it.value>=0?'+':''}${it.value.toFixed(2)}%</span>
       </div>
     `).join('');
-    const extraText = (data.extra || []).map(e => `${e.name} ${e.value>=0?'+':''}${e.value.toFixed(2)}%`).join(' · ');
+    const extraText = (data.extra || []).map(e => `${esc(e.name)} ${e.value>=0?'+':''}${e.value.toFixed(2)}%`).join(' · ');
     card.innerHTML = `
-      <div class="movers-title">${data.title || "TODAY'S TOP MOVERS"}</div>
+      <div class="movers-title">${esc(data.title || "TODAY'S TOP MOVERS")}</div>
       <div class="movers-grid">${cells}</div>
       <div class="movers-footer">
         <span class="movers-extra">${extraText ? '추가 주목 ' + extraText : ''}</span>
@@ -146,7 +147,7 @@ function renderCard(){
       const cls = s.value === maxV ? 'best' : (s.value === minV ? 'worst' : '');
       return `
       <div class="sector-cell ${cls}">
-        <span class="sn">${s.name}</span>
+        <span class="sn">${esc(s.name)}</span>
         <span class="sv" style="color:${s.value>=0?'#65e0a0':'#ff8a8a'}">${s.value>=0?'+':''}${s.value.toFixed(2)}%</span>
       </div>
     `;
@@ -154,17 +155,17 @@ function renderCard(){
     card.innerHTML = `
       <div class="sector-title">섹터별 등락률 — ${data.sectorCount}개 전체</div>
       <div class="sector-grid">${cells}</div>
-      <div class="sector-footer">${data.insight || ''}</div>
+      <div class="sector-footer">${esc(data.insight || '')}</div>
     `;
   } else if(type === 'closing'){
     card.innerHTML = `
       <div>
         <div class="live-badge"><span class="live-dot"></span>LIVE NOW · DAILY HEATMAP</div>
-        <div class="closing-title">${data.title}</div>
-        <div class="closing-q">${data.question}</div>
+        <div class="closing-title">${esc(data.title)}</div>
+        <div class="closing-q">${esc(data.question)}</div>
       </div>
       <div>
-        <div class="closing-cta">${data.cta}</div>
+        <div class="closing-cta">${esc(data.cta)}</div>
         <div class="closing-url">koreaheatmap.com</div>
       </div>
     `;
