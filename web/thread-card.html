@@ -25,8 +25,8 @@
   .stat-row .v { color:#fff; font-weight:900; }
   .footer { position:absolute; bottom:56px; left:72px; font-size:26px; color:#6b6355; font-weight:700; }
 
-  /* ===== Card type: story / movers (shared list layout) ===== */
-  #card.story, #card.movers { background:#000; padding:0; }
+  /* ===== Card type: story (list layout) ===== */
+  #card.story { background:#000; padding:0; }
   .top-bar { height:14px; background:linear-gradient(90deg,#fbbf24,#65b282); }
   .content { padding:56px 72px; }
   .label { font-size:30px; font-weight:900; letter-spacing:0.08em; color:#f5a623; }
@@ -40,14 +40,27 @@
   .insight { margin-top:48px; font-size:28px; color:#c9c2b4; line-height:1.6; }
   .site { margin-top:20px; font-size:26px; color:#6b6355; font-weight:700; }
 
-  /* ===== Card type: sectors (grid) ===== */
-  #card.sectors { padding:56px 72px; }
-  .sector-title { font-size:36px; font-weight:900; margin-bottom:10px; }
-  .sector-sub { font-size:26px; color:#9c9284; margin-bottom:44px; font-weight:700; }
-  .sector-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 40px; }
-  .sector-cell { display:flex; justify-content:space-between; padding:22px 0; border-bottom:1px solid rgba(255,255,255,0.12); font-size:28px; }
-  .sector-cell .sn { font-weight:800; color:#e5ded0; }
-  .sector-cell .sv { font-weight:900; }
+  /* ===== Card type: movers (3x3 colored grid) ===== */
+  #card.movers { background:#000; padding:56px 60px; }
+  .movers-title { font-size:38px; font-weight:900; letter-spacing:0.04em; margin-bottom:36px; }
+  .movers-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; }
+  .movers-cell { border-radius:20px; padding:36px 20px; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; min-height:170px; }
+  .movers-cell .mn { font-size:30px; font-weight:800; color:#fff; }
+  .movers-cell .mv { font-size:36px; font-weight:900; }
+  .movers-footer { margin-top:40px; display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:12px; }
+  .movers-extra { font-size:24px; color:#9c9284; font-weight:600; }
+  .movers-site { font-size:26px; color:#65e0a0; font-weight:900; }
+
+  /* ===== Card type: sectors (12-cell grid, best/worst highlight) ===== */
+  #card.sectors { padding:56px 60px; }
+  .sector-title { font-size:36px; font-weight:900; margin-bottom:40px; }
+  .sector-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+  .sector-cell { background:#0d0d0d; border:2px solid rgba(255,255,255,0.08); border-radius:14px; padding:28px 12px; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; min-height:120px; }
+  .sector-cell.best { border-color:#22c55e; }
+  .sector-cell.worst { border-color:#ff6b6b; }
+  .sector-cell .sn { font-size:24px; font-weight:700; color:#e5ded0; }
+  .sector-cell .sv { font-size:30px; font-weight:900; }
+  .sector-footer { margin-top:40px; font-size:26px; color:#9c9284; font-weight:600; }
 
   /* ===== Card type: closing (LIVE NOW) ===== */
   #card.closing { background: radial-gradient(circle at 80% 100%, #0f2018 0%, #000 55%); padding:64px 72px; display:flex; flex-direction:column; justify-content:space-between; }
@@ -86,7 +99,7 @@ function renderCard(){
       </div>
       <div class="footer">koreaheatmap.com</div>
     `;
-  } else if(type === 'story' || type === 'movers'){
+  } else if(type === 'story'){
     const items = data.items.map(it => `
       <div class="list-item">
         <span class="name">${it.name}</span>
@@ -103,17 +116,45 @@ function renderCard(){
         <div class="site">koreaheatmap.com</div>
       </div>
     `;
+  } else if(type === 'movers'){
+    function moversColor(v){
+      if (v < 0) return '#b91c1c';
+      if (v >= 6) return '#1fa563';
+      if (v >= 4) return '#1c8f56';
+      if (v >= 2) return '#19794a';
+      return '#155c37';
+    }
+    const cells = data.items.slice(0,9).map(it => `
+      <div class="movers-cell" style="background:${moversColor(it.value)}">
+        <span class="mn">${it.name}</span>
+        <span class="mv" style="color:#fff">${it.value>=0?'+':''}${it.value.toFixed(2)}%</span>
+      </div>
+    `).join('');
+    const extraText = (data.extra || []).map(e => `${e.name} ${e.value>=0?'+':''}${e.value.toFixed(2)}%`).join(' · ');
+    card.innerHTML = `
+      <div class="movers-title">${data.title || "TODAY'S TOP MOVERS"}</div>
+      <div class="movers-grid">${cells}</div>
+      <div class="movers-footer">
+        <span class="movers-extra">${extraText ? '추가 주목 ' + extraText : ''}</span>
+        <span class="movers-site">koreaheatmap.com</span>
+      </div>
+    `;
   } else if(type === 'sectors'){
-    const cells = data.sectors.map(s => `
-      <div class="sector-cell">
+    const values = data.sectors.map(s => s.value);
+    const maxV = Math.max(...values), minV = Math.min(...values);
+    const cells = data.sectors.map(s => {
+      const cls = s.value === maxV ? 'best' : (s.value === minV ? 'worst' : '');
+      return `
+      <div class="sector-cell ${cls}">
         <span class="sn">${s.name}</span>
         <span class="sv" style="color:${s.value>=0?'#65e0a0':'#ff8a8a'}">${s.value>=0?'+':''}${s.value.toFixed(2)}%</span>
       </div>
-    `).join('');
+    `;
+    }).join('');
     card.innerHTML = `
-      <div class="sector-title">섹터별 등락률</div>
-      <div class="sector-sub">${data.sectorCount}개 전체</div>
+      <div class="sector-title">섹터별 등락률 — ${data.sectorCount}개 전체</div>
       <div class="sector-grid">${cells}</div>
+      <div class="sector-footer">${data.insight || ''}</div>
     `;
   } else if(type === 'closing'){
     card.innerHTML = `
