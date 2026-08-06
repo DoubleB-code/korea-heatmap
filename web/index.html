@@ -1312,7 +1312,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeStock
 <script>
 (function(){
   try {
-    var VISIT_API = 'https://kospi-bets-api.onsecon.workers.dev/api/visits';
+    var VISIT_API = 'https://api.koreaheatmap.com/api/visits';
     var vid = localStorage.getItem('kh_vid');
     if (!vid) {
       vid = 'v_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -1334,7 +1334,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeStock
 
 <script>
 (function(){
-  var API_BASE = 'https://kospi-bets-api.onsecon.workers.dev';
+  var API_BASE = 'https://api.koreaheatmap.com';
   function authUrl(provider){
     var returnTo = encodeURIComponent(location.origin + '/');
     return API_BASE + '/api/auth/' + provider + '/start?return_to=' + returnTo;
