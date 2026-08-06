@@ -666,24 +666,27 @@
   const skipBtn = document.getElementById("kh-p-skip");
   const timerEl = document.getElementById("kh-p-timer");
   if (!modal || !skipBtn) return;
-  modal.classList.add("show");
-  let remain = COUNTDOWN_SEC;
-  timerEl.textContent = remain;
-  const tick = setInterval(() => {
-    remain -= 1;
-    if (remain <= 0) {
-      clearInterval(tick);
-      skipBtn.classList.add("ready");
-      skipBtn.textContent = "닫기 ✕";
-    } else {
-      timerEl.textContent = remain;
-    }
-  }, 1000);
-  skipBtn.addEventListener("click", () => {
-    if (!skipBtn.classList.contains("ready")) return;
-    modal.classList.remove("show");
-    localStorage.setItem(KEY, String(Date.now()));
-  });
+  const SHOW_DELAY_MS = 3000; // 트리맵이 먼저 보이도록 3초 지연 후 노출
+  setTimeout(() => {
+    modal.classList.add("show");
+    let remain = COUNTDOWN_SEC;
+    timerEl.textContent = remain;
+    const tick = setInterval(() => {
+      remain -= 1;
+      if (remain <= 0) {
+        clearInterval(tick);
+        skipBtn.classList.add("ready");
+        skipBtn.textContent = "닫기 ✕";
+      } else {
+        timerEl.textContent = remain;
+      }
+    }, 1000);
+    skipBtn.addEventListener("click", () => {
+      if (!skipBtn.classList.contains("ready")) return;
+      modal.classList.remove("show");
+      localStorage.setItem(KEY, String(Date.now()));
+    });
+  }, SHOW_DELAY_MS);
 
   // 카카오 광고 로드 감지: ins 태그가 display:block으로 바뀌면 광고 매칭 성공
   // 인터스티셜 + 좌측 사이드바 두 슬롯 모두 체크
