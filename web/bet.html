@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>내일의 주식 예측하기 · 코리아 히트맵</title>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5938370196874336" crossorigin="anonymous"></script>
+<style>
+  :root{--bg:#0d0f12;--panel:#161a20;--panel2:#1d232c;--line:#2a313d;--text:#ebeff5;--muted:#8e97a5;--gold:#fbbf24;--up:#22c55e;--down:#ef4444;--kakao:#fee500;--google:#ffffff}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR",sans-serif}
+  .app{max-width:520px;margin:0 auto;padding:16px 16px 40px}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.back{color:var(--muted);text-decoration:none;font-size:12px;border:1px solid var(--line);padding:7px 10px;border-radius:10px}
+  .hero,.card,.rowcard,.list-item,.reveal-card{background:var(--panel);border:1px solid var(--line);border-radius:18px}
+  .hero{padding:18px;margin-bottom:14px}.hero h1{font-size:22px;margin:0 0 8px}.hero p{margin:0;color:var(--muted);line-height:1.55;font-size:13px}.subline{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chip{font-size:11px;padding:6px 10px;border-radius:999px;background:var(--panel2);color:#c9d1dc;border:1px solid var(--line)}
+  .card{padding:14px;margin-bottom:12px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center}.label{font-size:11px;color:var(--muted);margin-bottom:4px}.value{font-size:18px;font-weight:800}.gold{color:var(--gold)} .muted{color:var(--muted)}
+  .auth-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.btn{border:none;border-radius:14px;padding:14px 12px;font-weight:800;cursor:pointer}.btn:disabled{opacity:.45;cursor:not-allowed}.btn-google{background:var(--google);color:#111}.btn-kakao{background:var(--kakao);color:#111}.btn-main{width:100%;background:linear-gradient(135deg,var(--gold),#f59e0b);color:#171717}.btn-sub{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+  .stock{padding:18px}.name{font-size:24px;font-weight:900}.code{font-size:12px;color:var(--muted);margin-top:2px}.price-row{display:flex;justify-content:space-between;align-items:end;margin:16px 0}.price{font-size:28px;font-weight:900}.sector{font-size:12px;color:var(--muted);background:var(--panel2);padding:6px 10px;border-radius:999px}
+  .dir{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}.dir button{padding:16px;border-radius:14px;border:2px solid transparent;font-weight:900;font-size:16px;cursor:pointer}.up{background:#17321f;color:#7ded9f}.down{background:#371717;color:#ff8e8e}.selected.up{border-color:#30d16b}.selected.down{border-color:#ef4444}
+  .amounts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.amounts button{padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer}.amounts .selected{background:var(--gold);color:#111;border-color:var(--gold)}
+  .section-title{font-size:15px;font-weight:800;margin:0 0 10px}.tiny{font-size:12px;color:var(--muted);line-height:1.5}.notice{font-size:12px;color:#cbd5e1;background:#1c2430;border:1px solid #314154;padding:10px 12px;border-radius:12px;margin-top:10px}
+  .list{display:flex;flex-direction:column;gap:8px}.list-item{padding:12px}.list-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.rank{font-size:12px;color:var(--muted)}.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;font-size:11px;background:var(--panel2);border:1px solid var(--line)}
+  .reveal-line{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-top:10px}.mini{font-size:12px;color:var(--muted)} .pill{font-size:11px;padding:5px 8px;border-radius:999px;background:var(--panel2);border:1px solid var(--line)} .uptext{color:var(--up)} .downtext{color:var(--down)}
+  .history-item{padding:10px 0;border-top:1px solid var(--line)} .history-item:first-child{border-top:none}.empty{color:var(--muted);font-size:12px}
+  .footer{font-size:10px;color:var(--muted);text-align:center;line-height:1.6;margin-top:24px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top"><h2 style="margin:0;font-size:16px">예측 게임</h2><a class="back" href="/">← 트리맵</a></div>
+
+  <div class="hero">
+    <h1>내일의 주식 예측하기</h1>
+    <p>포인트를 모아 잘 맞히는 사람의 내일 예측을 열어보는 구조입니다. 많이 맞히면 명예의 전당과 뱃지를 얻고, 다른 사용자가 내 예측을 볼 때 포인트도 적립됩니다.</p>
+    <div class="subline">
+      <span class="chip">포인트 기반</span>
+      <span class="chip">명예의 전당</span>
+      <span class="chip">Bronze · Silver · Gold</span>
+    </div>
+  </div>
+
+  <div class="card" id="meCard">불러오는 중...</div>
+  <div class="card" id="predictCard">불러오는 중...</div>
+  <div class="card">
+    <div class="section-title">명예의 전당 예측 보기</div>
+    <div class="tiny">포인트로 상위 예측자의 내일 방향을 열람할 수 있습니다. 적중률이 높을수록 가격이 올라갑니다.</div>
+    <div class="list" id="hofList" style="margin-top:12px"></div>
+  </div>
+  <div class="card">
+    <div class="section-title">내 예측 기록</div>
+    <div id="historyArea" class="tiny">불러오는 중...</div>
+  </div>
+  <div class="card">
+    <div class="section-title">최근 열람한 고수 예측</div>
+    <div id="revealArea" class="tiny">아직 열람한 예측이 없습니다.</div>
+  </div>
+
+  <div class="footer">본 서비스는 엔터테인먼트용 시뮬레이션입니다. 실제 투자 권유가 아니며, 투자 판단의 책임은 본인에게 있습니다.</div>
+</div>
+
+<script>
+const API = 'https://api.koreaheatmap.com';
+const state = { me:null, current:null, selectedDir:null, selectedAmt:50 };
+
+function $(id){ return document.getElementById(id); }
+async function api(path, options={}){
+  const res = await fetch(API + path, {
+    credentials:'include',
+    headers:{'Content-Type':'application/json', ...(options.headers||{})},
+    ...options,
+  });
+  const text = await res.text();
+  let json = null;
+  try{ json = text ? JSON.parse(text) : null; }catch{}
+  if(!res.ok) throw new Error(json?.error?.message || text || '요청 실패');
+  return json;
+}
+function nextBizDay(){
+  const d = new Date();
+  for(let i=1;i<10;i++){
+    const x = new Date(d.getTime() + i*86400000);
+    const day = x.getDay();
+    if(day!==0 && day!==6) return x.toISOString().slice(0,10);
+  }
+  return new Date(d.getTime()+86400000).toISOString().slice(0,10);
+}
+function authUrl(provider){
+  return `${API}/api/auth/${provider}/start?return_to=${encodeURIComponent(location.href.split('#')[0])}`;
+}
+function badges(user){
+  const out=[];
+  if(user?.auth_provider && user.auth_provider!=='anon') out.push(`<span class="badge">${user.auth_provider==='google'?'구글':'카카오'} 로그인</span>`);
+  if(user?.is_pro) out.push('<span class="badge">명예의 전당</span>');
+  if((user?.streak_days||0) >= 7) out.push('<span class="badge">7일 연속</span>');
+  if((user?.points||0) >= 3000) out.push('<span class="badge">포인트 상위권</span>');
+  return out.join(' ');
+}
+function renderMe(){
+  const me = state.me;
+  if(!me){ $('meCard').innerHTML = '<div class="empty">로그인이 필요합니다.</div>'; return; }
+  const displayName = me.user.display_name || me.user.nickname;
+  const logged = me.user.auth_provider !== 'anon';
+  $('meCard').innerHTML = `
+    <div class="section-title">내 프로필</div>
+    <div class="stats">
+      <div class="stat"><div class="label">포인트</div><div class="value gold">${Number(me.user.points).toLocaleString()}</div></div>
+      <div class="stat"><div class="label">적중률</div><div class="value">${me.stats.win_rate==null?'—':Math.round(me.stats.win_rate*100)+'%'}</div></div>
+      <div class="stat"><div class="label">오늘 예측</div><div class="value">${me.today.used}/${me.today.limit}</div></div>
+    </div>
+    <div style="margin-top:12px;font-weight:800">${displayName}</div>
+    <div class="tiny">${logged ? '로그인 계정으로 포인트와 예측 이력이 저장됩니다.' : '지금은 게스트 상태입니다. 로그인해야 예측 제출과 고수 예측 열람이 가능합니다.'}</div>
+    <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${badges(me.user) || '<span class="badge">첫 시작</span>'}</div>
+    ${logged ? `<div class="notice">포인트를 쌓아 명예의 전당에 오르면, 다른 사용자가 내일 예측을 열람할 때 포인트가 다시 적립됩니다.</div>` : `
+      <div class="auth-buttons">
+        <button class="btn btn-google" onclick="location.href='${authUrl('google')}'">구글로 시작</button>
+        <button class="btn btn-kakao" onclick="location.href='${authUrl('kakao')}'">카카오로 시작</button>
+      </div>
+    `}
+  `;
+}
+function renderPredict(){
+  const me = state.me;
+  if(!state.current){
+    $('predictCard').innerHTML = `
+      <div class="section-title">오늘의 예측 카드</div>
+      <div class="tiny">내일 종가 기준으로 상승 또는 하락을 선택합니다. 많이 맞히는 사람일수록 명예의 전당에 오르고, 다른 사용자가 내 예측을 포인트로 열람하게 됩니다.</div>
+      <button class="btn btn-main" style="margin-top:14px" onclick="loadToday()">오늘의 예측 시작</button>
+    `;
+    return;
+  }
+  const s = state.current.stock;
+  const canSubmit = !!state.selectedDir && me?.user?.auth_provider !== 'anon';
+  $('predictCard').innerHTML = `
+    <div class="section-title">오늘의 예측 카드</div>
+    <div class="stock rowcard">
+      <div class="name">${s.name}</div>
+      <div class="code">${s.code}</div>
+      <div class="price-row">
+        <div><div class="label">기준가</div><div class="price">${state.current.baseline_price ? Number(state.current.baseline_price).toLocaleString()+'원' : '불러오는 중'}</div></div>
+        <div class="sector">${s.sector}</div>
+      </div>
+      <div class="tiny">정산일: ${state.current.target_date} 종가</div>
+      <div class="dir">
+        <button class="up ${state.selectedDir==='UP'?'selected':''}" onclick="selectDir('UP')">▲ 상승</button>
+        <button class="down ${state.selectedDir==='DOWN'?'selected':''}" onclick="selectDir('DOWN')">▼ 하락</button>
+      </div>
+      <div class="amounts">
+        ${[10,50,100].map(n=>`<button class="${state.selectedAmt===n?'selected':''}" onclick="selectAmt(${n})">${n}</button>`).join('')}
+        <button onclick="passStock()">PASS</button>
+      </div>
+      <button class="btn btn-main" style="margin-top:12px" ${canSubmit?'':'disabled'} onclick="submitBet()">예측 제출</button>
+      ${me?.user?.auth_provider==='anon' ? '<div class="notice">예측 제출은 구글 또는 카카오 로그인 후 가능합니다.</div>' : ''}
+    </div>
+  `;
+}
+function renderHistory(list){
+  if(!list?.length){ $('historyArea').innerHTML = '<div class="empty">아직 예측 기록이 없습니다.</div>'; return; }
+  $('historyArea').innerHTML = list.map(x => `
+    <div class="history-item">
+      <div style="font-weight:700">${x.ticker_name}</div>
+      <div class="mini">${x.target_date} · ${x.direction} · ${x.amount}점</div>
+      <div class="mini ${x.outcome==='WIN'?'uptext':x.outcome==='LOSE'?'downtext':''}">${x.outcome || '대기중'}</div>
+    </div>
+  `).join('');
+}
+function renderHof(rows){
+  if(!rows?.length){ $('hofList').innerHTML = '<div class="empty">아직 명예의 전당 사용자가 없습니다.</div>'; return; }
+  $('hofList').innerHTML = rows.map((u, i) => `
+    <div class="list-item">
+      <div class="list-head">
+        <div>
+          <div style="font-weight:800">${i+1}. ${u.display_name || u.nickname}</div>
+          <div class="rank">${u.tier_emoji} ${u.tier} · 적중률 ${u.win_rate}% · 정산 ${u.decided_bets}회</div>
+        </div>
+        <span class="pill">${u.reveal_price}P</span>
+      </div>
+      <div class="reveal-line">
+        <div class="mini">내일 예측 열람</div>
+        <button class="btn btn-sub" onclick="buyReveal('${encodeURIComponent(u.nickname)}', ${u.reveal_price})">열람하기</button>
+      </div>
+    </div>
+  `).join('');
+}
+function renderReveal(payload){
+  if(!payload){ return; }
+  $('revealArea').innerHTML = `
+    <div class="reveal-card" style="padding:12px">
+      <div style="font-weight:800">${payload.target_nickname}의 ${payload.target_date} 예측</div>
+      <div class="tiny" style="margin:6px 0 10px">${payload.pay_info ? `결제 ${payload.pay_info.paid}점 · 예측자 적립 ${payload.pay_info.target_earned}점` : '무료 열람'}</div>
+      ${(payload.bets||[]).length ? payload.bets.map(b=>`<div class="history-item"><div style="font-weight:700">${b.ticker_name}</div><div class="mini ${b.direction==='UP'?'uptext':'downtext'}">${b.direction} · ${b.amount}점</div></div>`).join('') : '<div class="empty">공개된 예측이 없습니다.</div>'}
+    </div>
+  `;
+}
+function selectDir(dir){ state.selectedDir = dir; renderPredict(); }
+function selectAmt(n){ state.selectedAmt = n; renderPredict(); }
+async function initGuest(){ try{ await api('/api/user/init',{method:'POST',body:'{}'}); }catch(e){} }
+async function loadMe(){
+  try{ state.me = await api('/api/me'); }catch(e){ state.me = null; }
+  renderMe();
+}
+async function loadToday(){
+  try{ state.current = await api('/api/bets/today'); state.selectedDir = null; renderPredict(); }
+  catch(e){ $('predictCard').innerHTML = `<div class="section-title">오늘의 예측 카드</div><div class="empty">${e.message}</div>`; }
+}
+async function loadHistory(){
+  try{ const data = await api('/api/me/history?limit=10'); renderHistory(data.bets); }
+  catch(e){ $('historyArea').innerHTML = `<div class="empty">${e.message}</div>`; }
+}
+async function loadHof(){
+  try{ const data = await api('/api/hof'); renderHof(data.users); }
+  catch(e){ $('hofList').innerHTML = `<div class="empty">${e.message}</div>`; }
+}
+async function passStock(){
+  if(!state.current) return;
+  try{
+    await api('/api/bets',{method:'POST',body:JSON.stringify({seq:state.current.seq,direction:'PASS',amount:0})});
+    alert('PASS 처리됐습니다.');
+    await refreshAll();
+    state.current = null; renderPredict();
+  }catch(e){ alert(e.message); }
+}
+async function submitBet(){
+  if(!state.current || !state.selectedDir) return;
+  try{
+    await api('/api/bets',{method:'POST',body:JSON.stringify({seq:state.current.seq,direction:state.selectedDir,amount:state.selectedAmt})});
+    alert('예측이 저장됐습니다.');
+    state.current = null; renderPredict();
+    await refreshAll();
+  }catch(e){ alert(e.message); }
+}
+async function buyReveal(encodedNickname, price){
+  const nickname = decodeURIComponent(encodedNickname);
+  if(!confirm(`${nickname}의 내일 예측을 ${price}포인트로 열람할까요?`)) return;
+  try{
+    const data = await api('/api/reveals',{method:'POST',body:JSON.stringify({target_nickname:nickname,target_date:state.current?.target_date || nextBizDay()})});
+    renderReveal(data);
+    await loadMe();
+  }catch(e){ alert(e.message); }
+}
+async function refreshAll(){ await loadMe(); await loadHistory(); await loadHof(); }
+(async function(){
+  await initGuest();
+  await refreshAll();
+  renderPredict();
+})();
+</script>
+</body>
+</html>
