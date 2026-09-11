@@ -1,0 +1,16 @@
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=(), bluetooth=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://d3js.org https://cdnjs.cloudflare.com https://*.kakaocdn.net https://*.daumcdn.net https://t1.kakaocdn.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.kakaocdn.net; font-src https://fonts.gstatic.com https://*.kakaocdn.net; img-src 'self' data: https: blob:; connect-src 'self' https://api.koreaheatmap.com https://kospi-bets-api.onsecon.workers.dev https://*.kakaocdn.net https://*.kakao.com https://display.ad.daum.net https://*.daum.net https://*.daumcdn.net https://counterapi.dev; frame-src https://*.kakao.com https://*.kakaocdn.net https://*.daum.net https://display.ad.daum.net; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; upgrade-insecure-requests
+  Cross-Origin-Opener-Policy: unsafe-none
+  Cross-Origin-Resource-Policy: cross-origin
+
+/data/*
+  Cache-Control: public, max-age=60, s-maxage=60, stale-while-revalidate=30
+  Access-Control-Allow-Origin: *
+
+/*.html
+  Cache-Control: public, max-age=30, s-maxage=30, stale-while-revalidate=60

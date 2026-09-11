@@ -1,0 +1,47 @@
+name = "kospi-bets-api"
+account_id = "85e37d403071285c949aaec0a49880c7"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kospi-bets"
+database_id = "1aed5a58-1554-493a-99f1-439553522a94"
+migrations_dir = "migrations"
+
+[triggers]
+crons = ["30 8 * * 1-5"]
+
+[vars]
+ALLOWED_ORIGINS = "https://koreaheatmap.com,https://korea-heatmap.onsecon.workers.dev"
+COOKIE_DOMAIN = ".workers.dev"
+DAILY_BET_LIMIT = "3"
+INITIAL_POINTS = "1000"
+MIN_BET = "10"
+MAX_BET = "100"
+DEAD_ZONE_PCT = "0.1"
+
+[env.production]
+name = "kospi-bets-api"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "kospi-bets"
+database_id = "1aed5a58-1554-493a-99f1-439553522a94"
+migrations_dir = "migrations"
+
+[env.production.triggers]
+crons = ["30 8 * * 1-5"]
+
+[env.production.vars]
+ALLOWED_ORIGINS = "https://koreaheatmap.com,https://korea-heatmap.onsecon.workers.dev"
+COOKIE_DOMAIN = ".workers.dev"
+DAILY_BET_LIMIT = "3"
+INITIAL_POINTS = "1000"
+MIN_BET = "10"
+MAX_BET = "100"
+DEAD_ZONE_PCT = "0.1"
+
+[observability]
+enabled = true
