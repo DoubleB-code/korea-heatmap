@@ -1,0 +1,8 @@
+# 데이터 소스: 한국거래소(KRX) Open API 공식 서비스
+#
+# 전환 이력:
+#   PyKRX             -> KRX가 GitHub Actions IP 차단해서 작동 불가
+#   FinanceDataReader -> 한국 종목에 대해 KRX/Naver fchart 호출 (동일 차단 위험)
+#   yfinance          -> 종목 간 데이터가 간헐적으로 어긋나는 신뢰성 문제 발견 (2026-08)
+#   KRX Open API      -> 한국거래소 공식 API, 인증키 기반 (KRX_AUTH_KEY 환경변수 필요)
+requests>=2.31.0
