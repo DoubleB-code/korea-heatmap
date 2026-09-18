@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 보안 헤더 (HTTP 헤더는 _headers 파일에서 정식 적용. meta 는 fallback) -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://d3js.org https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self';">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<title>코리아 히트맵 | 코스피 200 실시간 시총 트리맵</title>
+<meta name="description" content="코리아 히트맵 — 한국 KOSPI 200 종목을 시가총액 가중 트리맵으로 한눈에 확인. 섹터별 등락률, 매일 3회 자동 갱신, 종목 클릭 시 네이버 금융 이동.">
+<meta name="keywords" content="코리아 히트맵,코스피 히트맵,KOSPI 히트맵,코스피 시총,섹터 등락,KOSPI 200,주식 시각화,한국 주식 지도,네이버 금융">
+<meta property="og:title" content="코리아 히트맵 — 코스피 200 실시간 시총 트리맵">
+<meta property="og:description" content="코리아 히트맵 — 코스피 200 종목을 시가총액 가중 트리맵으로 한눈에. 매일 3회 자동 갱신.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #000; color: #e8e8e8;
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
+    height: 100%; overflow: hidden;
+    letter-spacing: -0.01em;
+  }
+  #app { display: flex; flex-direction: column; height: 100vh; }
+  header.topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 24px; background: #0a0a0a;
+    border-bottom: 1px solid #1a1a1a; flex-shrink: 0;
+  }
+  .brand { display: flex; align-items: baseline; gap: 14px; }
+  .brand .logo { font-weight: 900; font-size: 18px; letter-spacing: -0.03em; }
+  .brand .logo span { color: #5fc285; font-weight: 700; }
+  .brand .tagline { font-size: 12px; color: #6b7280; font-weight: 400; }
+  .index-info { display: flex; gap: 28px; align-items: center; font-size: 13px; }
+  .index-info .label { color: #6b7280; margin-right: 6px; font-weight: 400; }
+  .index-info .value { font-weight: 700; }
+  .pos { color: #5fc285; }
+  .neg { color: #cc6868; }
+  .controls { display: flex; align-items: center; gap: 10px; }
+  .controls .seg { display: flex; background: #141414; border-radius: 6px; padding: 2px; }
+  .controls .seg button {
+    background: transparent; border: 0; color: #9ca3af;
+    padding: 6px 14px; font-size: 12px; font-weight: 500; cursor: pointer;
+    border-radius: 4px; font-family: inherit; letter-spacing: -0.01em;
+  }
+  .controls .seg button.active { background: #262626; color: #fff; }
+  .controls .seg button:hover:not(.active):not([disabled]) { color: #fff; }
+  .controls .seg button[disabled] { opacity: 0.4; cursor: not-allowed; }
+  .search {
+    background: #141414; border: 1px solid #262626; border-radius: 6px;
+    padding: 7px 12px; color: #e8e8e8; font-size: 12px; width: 200px;
+    font-family: inherit; letter-spacing: -0.01em;
+  }
+  .search:focus { outline: none; border-color: #22c55e; }
+  main { flex: 1; display: flex; overflow: hidden; background: #000; }
+  #treemap { width: 100%; height: 100%; }
+  #treemap-wrap { display: flex; flex-direction: column; }
+  /* 좌측 광고 사이드바 */
+  .ad-sidebar {
+    flex-shrink: 0; width: 180px; padding: 12px 10px; background: #0a0a0a;
+    border-right: 1px solid #1a1a1a; display: flex; flex-direction: column;
+    gap: 12px; overflow-y: auto;
+  }
+  .ad-slot {
+    background: #141414; border: 1px dashed #2a2a2a; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ad-skyscraper { min-height: 600px; }
+  .ad-rect { min-height: 250px; margin-top: auto; }
+  .ad-placeholder {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    color: #4a4a4a; text-align: center; padding: 12px;
+  }
+  .ad-placeholder .ad-label {
+    font-size: 10px; letter-spacing: 0.15em; color: #6b7280;
+    border: 1px solid #262626; padding: 2px 8px; border-radius: 2px;
+  }
+  .ad-placeholder .ad-size { font-size: 11px; color: #4a4a4a; font-weight: 500; }
+  .ad-placeholder .ad-hint { font-size: 10px; color: #4a4a4a; line-height: 1.5; opacity: 0.7; }
+  /* 모바일에서는 광고 사이드바 숨김 */
+  @media (max-width: 900px) {
+    .ad-sidebar { display: none; }
+  }
+  .sector-label {
+    fill: #9ca3af; font-weight: 700; font-size: 10px;
+    pointer-events: none; letter-spacing: 0.06em;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .ticker-name {
+    fill: #fff; font-weight: 700; pointer-events: none;
+    text-anchor: middle; dominant-baseline: middle;
+    font-family: 'Noto Sans KR', sans-serif; letter-spacing: -0.01em;
+  }
+  .ticker-pct {
+    fill: rgba(255,255,255,0.85); pointer-events: none;
+    text-anchor: middle; dominant-baseline: middle;
+    font-family: 'Noto Sans KR', sans-serif; font-weight: 500;
+  }
+  .cell {
+    stroke: #000; stroke-width: 0.5; cursor: pointer;
+    transition: stroke 0.06s;
+  }
+  .cell:hover { stroke: #facc15; stroke-width: 1.5; }
+  .tooltip {
+    position: absolute; pointer-events: none;
+    background: #0e0e0e; border: 1px solid #2a2a2a; border-radius: 6px;
+    padding: 0; font-size: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.8);
+    min-width: 380px; z-index: 100; opacity: 0; transition: opacity 0.06s;
+    font-family: 'Noto Sans KR', sans-serif; overflow: hidden;
+  }
+  .tooltip .tt-header {
+    background: #1a1a1a; padding: 8px 14px; font-size: 10px;
+    color: #9ca3af; font-weight: 700; letter-spacing: 0.06em;
+    border-bottom: 1px solid #262626;
+  }
+  .tooltip .tt-main {
+    display: grid; grid-template-columns: auto 1fr auto auto;
+    gap: 14px; align-items: center; padding: 12px 14px;
+    color: #fff;
+  }
+  .tooltip .tt-main.pos { background: #4ea670; }
+  .tooltip .tt-main.neg { background: #a85555; }
+  .tooltip .tt-main .m-name {
+    font-weight: 900; font-size: 18px; letter-spacing: -0.02em;
+  }
+  .tooltip .tt-main .m-sub { font-size: 10px; opacity: 0.85; }
+  .tooltip .tt-main .m-spark { width: 80px; height: 24px; }
+  .tooltip .tt-main .m-price { font-weight: 700; font-size: 16px; text-align: right; }
+  .tooltip .tt-main .m-change { font-weight: 700; font-size: 16px; text-align: right; min-width: 64px; }
+  .tooltip .tt-peers { padding: 4px 0; }
+  .tooltip .tt-peer {
+    display: grid; grid-template-columns: 110px 1fr 80px 64px;
+    gap: 10px; align-items: center; padding: 6px 14px;
+    font-size: 12px; border-top: 1px solid #1a1a1a;
+  }
+  .tooltip .tt-peer:first-child { border-top: 0; }
+  .tooltip .tt-peer .p-name {
+    font-weight: 600; color: #e8e8e8;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .tooltip .tt-peer .p-spark { width: 60px; height: 18px; }
+  .tooltip .tt-peer .p-price { text-align: right; color: #d4d4d4; font-weight: 500; }
+  .tooltip .tt-peer .p-change { text-align: right; font-weight: 700; }
+  .tooltip .tt-footer {
+    padding: 6px 14px; border-top: 1px solid #262626;
+    color: #facc15; font-size: 10px; font-weight: 500;
+    background: #141414;
+  }
+  footer.statusbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 24px; background: #0a0a0a; border-top: 1px solid #1a1a1a;
+    font-size: 11px; color: #6b7280; flex-shrink: 0;
+    font-weight: 400;
+  }
+  .legend { display: flex; align-items: center; gap: 0; }
+  .legend .swatch { display: inline-block; width: 26px; height: 11px; }
+  .legend .label { font-size: 10px; color: #9ca3af; font-weight: 500; }
+  .legend .label.lo { margin-right: 8px; }
+  .legend .label.hi { margin-left: 8px; }
+  .delay-badge {
+    display: inline-block; padding: 2px 8px; background: #1a1a1a;
+    border-radius: 3px; font-size: 10px; color: #9ca3af; margin-left: 8px;
+    font-weight: 500;
+  }
+  .empty-state {
+    display: flex; align-items: center; justify-content: center;
+    height: 100%; flex-direction: column; gap: 12px; color: #6b7280;
+  }
+  .empty-state code {
+    background: #141414; padding: 4px 8px; border-radius: 4px;
+    color: #22c55e; font-family: monospace;
+  }
+  main { display: flex; }
+  #treemap-wrap { flex: 1; position: relative; min-width: 0; }
+  .pf-toggle {
+    display: flex; align-items: center; gap: 6px;
+    background: #141414; border: 1px solid #262626; border-radius: 6px;
+    color: #e8e8e8; padding: 7px 12px; font-size: 12px; cursor: pointer;
+    font-family: inherit; font-weight: 500; letter-spacing: -0.01em;
+    transition: border-color 0.1s, background 0.1s;
+  }
+  .pf-toggle:hover { border-color: #22c55e; background: #1a1a1a; }
+  .pf-toggle.active { background: #22c55e; color: #000; border-color: #22c55e; }
+  #portfolio {
+    width: 340px; flex-shrink: 0; background: #0a0a0a;
+    border-left: 1px solid #1a1a1a; display: flex; flex-direction: column;
+    transition: width 0.2s ease, opacity 0.2s ease; overflow: hidden;
+  }
+  #portfolio.hidden { width: 0; opacity: 0; border-left: 0; }
+  .pf-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid #1a1a1a;
+    font-weight: 700; font-size: 14px; letter-spacing: -0.01em;
+  }
+  .pf-close { background: transparent; border: 0; color: #6b7280; font-size: 20px; cursor: pointer; line-height: 1; }
+  .pf-close:hover { color: #fff; }
+  .pf-summary { padding: 14px 16px; border-bottom: 1px solid #1a1a1a; }
+  .pf-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
+  .pf-row.pf-pnl-row { padding-top: 8px; margin-top: 4px; border-top: 1px dashed #262626; }
+  .pf-k { color: #6b7280; }
+  .pf-v { font-weight: 700; font-size: 13px; }
+  .pf-form { padding: 14px 16px; border-bottom: 1px solid #1a1a1a; }
+  .pf-label { display: block; font-size: 11px; color: #6b7280; margin-bottom: 6px; font-weight: 500; }
+  .pf-form input {
+    width: 100%; background: #141414; border: 1px solid #262626;
+    border-radius: 5px; padding: 7px 10px; color: #e8e8e8; font-size: 12px;
+    font-family: inherit; margin-bottom: 6px;
+  }
+  .pf-form input:focus { outline: none; border-color: #22c55e; }
+  .pf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .pf-grid input { margin-bottom: 0; }
+  .pf-btn {
+    width: 100%; margin-top: 8px; background: #22c55e; color: #000;
+    border: 0; border-radius: 5px; padding: 8px; font-size: 12px;
+    font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+  .pf-btn:hover { background: #16a34a; }
+  .pf-list { flex: 1; overflow-y: auto; padding: 8px 16px 16px; }
+  .pf-empty { color: #6b7280; font-size: 12px; padding: 12px 0; text-align: center; }
+  .pf-item {
+    background: #141414; border: 1px solid #1a1a1a; border-radius: 6px;
+    padding: 10px 12px; margin-bottom: 8px; font-size: 12px;
+  }
+  .pf-item:hover { border-color: #22c55e; }
+  .pf-item-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .pf-item-name { font-weight: 700; font-size: 13px; }
+  .pf-item-code { color: #6b7280; font-size: 10px; margin-left: 6px; font-weight: 400; }
+  .pf-item-del { background: transparent; border: 0; color: #6b7280; cursor: pointer; font-size: 14px; }
+  .pf-item-del:hover { color: #ef4444; }
+  .pf-item-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 11px; }
+  .pf-item-row .k { color: #6b7280; }
+  .pf-item-row .v { font-weight: 600; }
+  .pf-item-pnl-row { padding-top: 6px; margin-top: 4px; border-top: 1px dashed #262626; }
+  .pf-pos { color: #22c55e; }
+  .pf-neg { color: #ef4444; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">코리아<span> 히트맵</span></div>
+      <div class="tagline">코스피 200 시총 가중 트리맵 · 한눈에 보는 한국 시장</div>
+    </div>
+    <div class="index-info" id="index-info">
+      <div><span class="label">기준일</span><span class="value" id="as-of">—</span></div>
+      <div><span class="label">종목 수</span><span class="value" id="stock-count">—</span></div>
+      <div><span class="label">시총합계</span><span class="value" id="total-cap">—</span></div>
+      <div><span class="label">가중 등락률</span><span class="value" id="weighted-change">—</span></div>
+    </div>
+    <div class="controls">
+      <input class="search" id="search" type="text" placeholder="종목 검색 (예: 삼성전자, 005930)" />
+      <div class="seg">
+        <button class="active" data-period="1D">1일</button>
+        <button data-period="1W" disabled title="추후 지원">1주</button>
+        <button data-period="1M" disabled title="추후 지원">1개월</button>
+      </div>
+      <button id="pf-toggle" class="pf-toggle">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+        <span>내 주식</span>
+      </button>
+    </div>
+  </header>
+  <main>
+    <aside id="ad-left" class="ad-sidebar" aria-label="광고 영역">
+      <div class="ad-slot ad-skyscraper" data-slot="left-1">
+        <div class="ad-placeholder">
+          <span class="ad-label">광고</span>
+          <span class="ad-size">160 × 600</span>
+          <span class="ad-hint">트래픽 확보 후<br>AdSense / 카카오 애드핏 연결</span>
+        </div>
+      </div>
+      <div class="ad-slot ad-rect" data-slot="left-2">
+        <div class="ad-placeholder">
+          <span class="ad-label">광고</span>
+          <span class="ad-size">160 × 250</span>
+        </div>
+      </div>
+    </aside>
+    <div id="treemap-wrap" style="position:relative; flex:1; min-width:0;">
+      <svg id="treemap"></svg>
+    </div>
+    <aside id="portfolio" class="hidden">
+      <div class="pf-header">
+        <span>내 포트폴리오</span>
+        <button class="pf-close" id="pf-close">×</button>
+      </div>
+      <div class="pf-summary">
+        <div class="pf-row"><span class="pf-k">총 매입금액</span><span class="pf-v" id="pf-cost">0</span></div>
+        <div class="pf-row"><span class="pf-k">총 평가금액</span><span class="pf-v" id="pf-mkt">0</span></div>
+        <div class="pf-row pf-pnl-row"><span class="pf-k">평가손익</span><span class="pf-v" id="pf-pnl">0</span></div>
+        <div class="pf-row"><span class="pf-k">수익률</span><span class="pf-v" id="pf-ret">0.00%</span></div>
+      </div>
+      <div class="pf-form">
+        <label class="pf-label">종목 추가</label>
+        <input id="pf-search" list="pf-tickers" placeholder="종목명 또는 코드" autocomplete="off" />
+        <datalist id="pf-tickers"></datalist>
+        <div class="pf-grid">
+          <input id="pf-avg" type="number" placeholder="평단가 (원)" min="1" />
+          <input id="pf-qty" type="number" placeholder="수량 (주)" min="1" />
+        </div>
+        <button id="pf-add" class="pf-btn">+ 추가</button>
+      </div>
+      <div class="pf-list" id="pf-list">
+        <div class="pf-empty">종목을 추가하면 손익이 표시됩니다</div>
+      </div>
+    </aside>
+
+    <div class="tooltip" id="tooltip"></div>
+    <div class="empty-state" id="empty" style="display:none;">
+      <div>📊 데이터를 불러올 수 없습니다</div>
+      <div>아래 명령으로 데이터를 먼저 생성하세요:</div>
+      <code>python ingest/run.py</code>
+    </div>
+  </main>
+  <footer class="statusbar">
+    <div>
+      <span id="footer-date">—</span>
+      <span class="delay-badge">15분 지연</span>
+      <span style="margin-left:12px;">데이터: PyKRX (KRX) · 분류: 자체 매핑 · 표본: KOSPI 200 · 클릭 → 네이버 금융</span>
+    </div>
+    <div class="legend">
+      <span class="label lo">−3%</span>
+      <span class="swatch" style="background:#e07e7e"></span>
+      <span class="swatch" style="background:#cc6868"></span>
+      <span class="swatch" style="background:#a85555"></span>
+      <span class="swatch" style="background:#7d4040"></span>
+      <span class="swatch" style="background:#5a3838"></span>
+      <span class="swatch" style="background:#3a3a3a"></span>
+      <span class="swatch" style="background:#345a40"></span>
+      <span class="swatch" style="background:#3d7a55"></span>
+      <span class="swatch" style="background:#4ea670"></span>
+      <span class="swatch" style="background:#5fc285"></span>
+      <span class="swatch" style="background:#7dd99c"></span>
+      <span class="label hi">+3%</span>
+    </div>
+    <div>© 2026 코리아 히트맵 · 투자판단 책임은 본인에게 있습니다</div>
+  </footer>
+</div>
+
+<script>
+const svg = d3.select("#treemap");
+const tooltip = d3.select("#tooltip");
+let currentData = null;
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function sparklinePath(values, w, h, color) {
+  if (!values || values.length < 2) return "";
+  const min = Math.min(...values), max = Math.max(...values);
+  const range = max - min || 1;
+  const pad = 2;
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * w;
+    const y = h - pad - ((v - min) / range) * (h - pad * 2);
+    return (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1);
+  }).join(" ");
+  return `<path d="${pts}" fill="none" stroke="${color}" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+}
+
+function colorFor(pct) {
+  // 파스텔톤 — 명암 단계 뚜렷 (밝은 → 어두운)
+  const c = Math.max(-3, Math.min(3, pct));
+  if (c >= 0) {
+    if (c < 0.15) return "#3a3a3a";
+    if (c < 0.5)  return "#345a40";
+    if (c < 1.0)  return "#3d7a55";
+    if (c < 2.0)  return "#4ea670";
+    if (c < 3.0)  return "#5fc285";
+    return "#7dd99c";
+  } else {
+    const a = -c;
+    if (a < 0.15) return "#3a3a3a";
+    if (a < 0.5)  return "#5a3838";
+    if (a < 1.0)  return "#7d4040";
+    if (a < 2.0)  return "#a85555";
+    if (a < 3.0)  return "#cc6868";
+    return "#e07e7e";
+  }
+}
+
+function fmtCap(eok) {
+  if (eok >= 10000) return (eok / 10000).toFixed(1) + "조";
+  return eok.toLocaleString() + "억";
+}
+
+function updateHeader(data) {
+  document.getElementById("as-of").textContent = data.as_of_iso || data.as_of;
+  document.getElementById("stock-count").textContent = data.stock_count + "개";
+  document.getElementById("total-cap").textContent = fmtCap(data.total_market_cap_eok);
+  const wc = data.weighted_change_pct;
+  const wcEl = document.getElementById("weighted-change");
+  wcEl.textContent = (wc >= 0 ? "+" : "") + wc.toFixed(2) + "%";
+  wcEl.className = "value " + (wc >= 0 ? "pos" : "neg");
+  document.getElementById("footer-date").textContent = (data.as_of_iso || data.as_of) + " 기준";
+}
+
+function render(data) {
+  currentData = data;
+  const main = document.querySelector("main");
+  const W = main.clientWidth;
+  const H = main.clientHeight;
+  svg.attr("width", W).attr("height", H);
+  svg.selectAll("*").remove();
+
+  const root = d3.hierarchy(data)
+    .sum(d => d.value || 0)
+    .sort((a, b) => b.value - a.value);
+
+  d3.treemap()
+    .size([W, H])
+    .paddingTop(d => d.depth === 0 ? 4 : 18)
+    .paddingInner(2)
+    .paddingOuter(4)
+    .tile(d3.treemapSquarify.ratio(1.4))(root);
+
+  // 섹터 배경 (검정)
+  svg.selectAll("rect.sector-bg")
+    .data(root.descendants().filter(d => d.depth === 1))
+    .enter().append("rect").attr("class", "sector-bg")
+    .attr("x", d => d.x0).attr("y", d => d.y0)
+    .attr("width", d => d.x1 - d.x0).attr("height", d => d.y1 - d.y0)
+    .attr("fill", "#000");
+
+  // 섹터 라벨 (인셋)
+  svg.selectAll("text.sector-label")
+    .data(root.descendants().filter(d => d.depth === 1))
+    .enter().append("text").attr("class", "sector-label")
+    .attr("x", d => d.x0 + 6).attr("y", d => d.y0 + 11)
+    .text(d => (d.x1 - d.x0) < 60 ? "" : d.data.name.toUpperCase());
+
+  const cells = svg.selectAll("g.cell")
+    .data(root.leaves()).enter().append("g")
+    .attr("class", "cell-g")
+    .attr("transform", d => `translate(${d.x0},${d.y0})`)
+    .style("cursor", "pointer");
+
+  cells.append("rect").attr("class", "cell")
+    .attr("width", d => Math.max(0.5, d.x1 - d.x0))
+    .attr("height", d => Math.max(0.5, d.y1 - d.y0))
+    .attr("fill", d => colorFor(d.data.change))
+    .on("mouseover", function(event, d) {
+      // 호버: 노란 외곽선 + 둥근 모서리 (다른 셀에 영향 없음, 크기 변화 없음)
+      d3.select(this).transition().duration(120)
+        .attr("stroke", "#facc15").attr("stroke-width", 2)
+        .attr("rx", 6).attr("ry", 6);
+    })
+    .on("mousemove", function(event, d) {
+      const sign = d.data.change >= 0 ? "+" : "";
+      const cls = d.data.change >= 0 ? "pos" : "neg";
+      const peers = (d.parent.children || []).slice(0, 5);
+      const priceStr = d.data.price ? d.data.price.toLocaleString() : fmtCap(d.data.value);
+      const peerRows = peers.map(p => {
+        const pSign = p.data.change >= 0 ? "+" : "";
+        const pCls = p.data.change >= 0 ? "pos" : "neg";
+        const pPrice = p.data.price ? p.data.price.toLocaleString() : "—";
+        const pSpark = sparklinePath(p.data.spark || [], 60, 18, p.data.change >= 0 ? "#5fc285" : "#cc6868");
+        return `<div class="tt-peer">
+          <span class="p-name" title="${escapeHtml(p.data.code)}">${escapeHtml(p.data.name)}</span>
+          <svg class="p-spark" viewBox="0 0 60 18">${pSpark}</svg>
+          <span class="p-price">${pPrice}</span>
+          <span class="p-change ${pCls}">${pSign}${p.data.change.toFixed(2)}%</span>
+        </div>`;
+      }).join("");
+      const mainSpark = sparklinePath(d.data.spark || [], 80, 24, "rgba(255,255,255,0.85)");
+      tooltip.html(`
+        <div class="tt-header">${escapeHtml(d.parent.data.name)}</div>
+        <div class="tt-main ${cls}">
+          <div>
+            <div class="m-name">${escapeHtml(d.data.name)}</div>
+            <div class="m-sub">${escapeHtml(d.data.code)}</div>
+          </div>
+          <svg class="m-spark" viewBox="0 0 80 24">${mainSpark}</svg>
+          <div class="m-price">${priceStr}</div>
+          <div class="m-change">${sign}${d.data.change.toFixed(2)}%</div>
+        </div>
+        <div class="tt-peers">${peerRows}</div>
+        <div class="tt-footer">클릭 → 네이버 금융</div>
+      `).style("left", (event.clientX + 14) + "px")
+        .style("top", (event.clientY + 14) + "px")
+        .style("opacity", 1);
+    })
+    .on("mouseleave", function(event, d) {
+      d3.select(this).transition().duration(120)
+        .attr("stroke", "#000").attr("stroke-width", 0.5)
+        .attr("rx", 0).attr("ry", 0);
+      tooltip.style("opacity", 0);
+    })
+    .on("click", function(event, d) {
+      const url = "https://finance.naver.com/item/main.naver?code=" + d.data.code;
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
+
+  cells.each(function(d) {
+    const w = d.x1 - d.x0, h = d.y1 - d.y0;
+    if (w < 28 || h < 16) return;
+    const g = d3.select(this);
+    const fontSize = Math.max(8.5, Math.min(22, Math.sqrt(w * h) / 8));
+    const sign = d.data.change >= 0 ? "+" : "";
+
+    const maxChars = Math.max(2, Math.floor((w - 4) / (fontSize * 0.55)));
+    const displayName = d.data.name.length * fontSize * 0.55 < w - 4
+      ? d.data.name : d.data.name.slice(0, maxChars);
+
+    g.append("text").attr("class", "ticker-name")
+      .attr("x", w / 2).attr("y", h / 2 - fontSize * 0.32)
+      .attr("font-size", fontSize).text(displayName);
+
+    if (h > 28) {
+      g.append("text").attr("class", "ticker-pct")
+        .attr("x", w / 2).attr("y", h / 2 + fontSize * 0.7)
+        .attr("font-size", Math.max(8, fontSize * 0.65))
+        .text(sign + d.data.change.toFixed(2) + "%");
+    }
+  });
+}
+
+// 데이터 인라인 임베드 (standalone)
+const EMBEDDED_DATA = {"name": "KOSPI 200", "as_of": "20260504", "as_of_iso": "2026-05-04", "delay_minutes": 15, "stock_count": 200, "total_market_cap_eok": 19422465, "weighted_change_pct": 0.848, "sectors": [{"name": "IT", "stock_count": 18, "total_value": 7281665, "weighted_change": 1.553}, {"name": "금융", "stock_count": 29, "total_value": 1925637, "weighted_change": -0.164}, {"name": "헬스케어", "stock_count": 18, "total_value": 1692790, "weighted_change": 0.626}, {"name": "경기관련소비재", "stock_count": 13, "total_value": 1618991, "weighted_change": 0.969}, {"name": "커뮤니케이션", "stock_count": 24, "total_value": 1362568, "weighted_change": 0.963}, {"name": "2차전지·신재생", "stock_count": 4, "total_value": 1359000, "weighted_change": 1.133}, {"name": "산업재", "stock_count": 23, "total_value": 1192548, "weighted_change": -0.612}, {"name": "소재", "stock_count": 15, "total_value": 1086355, "weighted_change": 1.07}, {"name": "에너지", "stock_count": 23, "total_value": 615873, "weighted_change": 0.237}, {"name": "필수소비재", "stock_count": 17, "total_value": 536466, "weighted_change": 0.494}, {"name": "유틸리티", "stock_count": 12, "total_value": 444572, "weighted_change": -0.812}, {"name": "게임·엔터", "stock_count": 4, "total_value": 306000, "weighted_change": -1.57}], "children": [{"name": "IT", "children": [{"code": "005930", "name": "삼성전자", "value": 4700000, "change": 2.91, "price": 80270, "prev_close": 78000, "spark": [78447.9, 76553.4, 77434.4, 77346.3, 79072.5, 78958.9, 79729.0, 77221.8, 78375.7, 77194.9, 77879.5, 78878.3, 77419.2, 78050.7, 79577.2, 79318.5, 78354.9, 79617.4, 80402.6, 77902.8, 80547.5, 80280.0, 79209.2, 78694.2, 81346.7, 79432.3, 78727.6, 78818.6, 81307.5, 80270]}, {"code": "000660", "name": "SK하이닉스", "value": 1520000, "change": -1.41, "price": 128167, "prev_close": 130000, "spark": [131574.5, 131114.6, 130059.3, 132235.9, 129124.5, 129950.8, 131309.5, 130165.2, 131348.7, 129827.7, 130416.7, 126976.3, 127846.5, 128098.6, 126960.8, 127682.0, 126943.2, 127787.2, 129557.9, 128106.1, 128070.3, 127183.4, 127414.8, 130784.8, 129242.0, 128979.3, 126670.7, 129468.1, 126504.6, 128167]}, {"code": "006400", "name": "삼성SDI", "value": 305000, "change": -2.07, "price": 372134, "prev_close": 380000, "spark": [387286.7, 381812.7, 380305.2, 381934.3, 384018.5, 382752.2, 374339.3, 371136.5, 375083.0, 374101.6, 372985.5, 383609.2, 382347.5, 373715.3, 378516.4, 374377.8, 381830.8, 374776.4, 371617.8, 371074.9, 375488.7, 370772.3, 375291.8, 379683.2, 371992.7, 369041.0, 380353.8, 372818.3, 366315.8, 372134]}, {"code": "066570", "name": "LG전자", "value": 162000, "change": 2.12, "price": 97014, "prev_close": 95000, "spark": [93485.2, 95564.0, 96272.3, 94906.3, 93584.0, 94887.9, 97341.9, 95599.1, 97383.6, 97025.1, 93798.8, 96620.5, 96538.5, 96046.3, 95067.4, 96588.7, 94603.8, 95927.5, 96070.5, 98080.6, 97847.5, 95540.2, 96530.1, 95350.3, 98268.0, 98174.0, 96023.5, 97414.3, 97367.4, 97014]}, {"code": "042700", "name": "한미반도체", "value": 128000, "change": 1.05, "price": 146522, "prev_close": 145000, "spark": [146538.0, 145282.8, 146737.5, 145334.9, 142282.4, 144231.4, 142498.2, 147881.9, 147639.1, 147415.9, 144396.4, 142986.1, 147845.0, 148301.5, 143306.1, 145704.9, 143314.7, 147419.4, 147502.5, 143819.0, 145904.6, 146393.9, 144777.5, 148389.8, 145809.0, 144622.9, 146594.8, 147764.6, 144718.0, 146522]}, {"code": "009150", "name": "삼성전기", "value": 101000, "change": 0.14, "price": 165231, "prev_close": 165000, "spark": [168272.6, 165998.5, 164606.8, 165140.1, 162527.0, 163220.3, 163977.7, 165639.4, 163280.0, 163222.5, 162244.2, 165954.1, 163304.1, 167783.1, 167488.4, 162283.2, 163395.9, 166252.2, 163254.7, 162721.2, 168037.7, 165636.8, 164994.6, 167064.3, 167223.5, 163153.0, 162543.1, 164759.4, 164717.9, 165231]}, {"code": "034730", "name": "SK", "value": 84000, "change": -1.2, "price": 163020, "prev_close": 165000, "spark": [166493.8, 166062.2, 168020.6, 162176.5, 164091.9, 163610.7, 166948.7, 162883.1, 162433.7, 164050.4, 163807.8, 162804.9, 162549.2, 166872.4, 163673.3, 166332.1, 164235.7, 160908.8, 167026.8, 165893.9, 166692.7, 166346.5, 165771.7, 161253.7, 163267.7, 161426.5, 162579.5, 160278.5, 162299.1, 163020]}, {"code": "900067", "name": "신반도체67", "value": 49583, "change": 1.9, "price": 65990, "prev_close": 64760, "spark": [65885.4, 65554.6, 64277.6, 65405.8, 65537.7, 65719.7, 65441.4, 65021.4, 64280.5, 64396.3, 64018.4, 65848.5, 64109.8, 64819.1, 64166.1, 65334.7, 66545.4, 65563.0, 64353.6, 65586.4, 66535.5, 64511.6, 64552.6, 66690.5, 65523.9, 66985.9, 66046.6, 66113.5, 64732.7, 65990]}, {"code": "900131", "name": "신반도체131", "value": 47738, "change": -1.72, "price": 114165, "prev_close": 116163, "spark": [116545.1, 116198.1, 118010.3, 114605.8, 116874.7, 114625.2, 115273.7, 116464.8, 114698.5, 114703.5, 116624.2, 113453.1, 115145.8, 117543.6, 117463.9, 113180.8, 113750.7, 113919.5, 116901.4, 116593.2, 116517.0, 114120.4, 113084.3, 116102.5, 115439.0, 114950.6, 116596.7, 115005.9, 111986.3, 114165]}, {"code": "900081", "name": "신반도체81", "value": 44252, "change": 0.22, "price": 69392, "prev_close": 69240, "spark": [70438.1, 68144.6, 70299.7, 68601.7, 70342.4, 69938.8, 68314.8, 68670.7, 68478.5, 68850.8, 69812.6, 70277.0, 69317.7, 68617.1, 70446.1, 68071.6, 69696.4, 70243.1, 68068.8, 68877.5, 68320.0, 70681.7, 68415.9, 69199.0, 69936.6, 69540.0, 68298.9, 70616.8, 69917.0, 69392]}, {"code": "900022", "name": "신반도체22", "value": 35108, "change": 0.82, "price": 35007, "prev_close": 34722, "spark": [35190.8, 34847.6, 34249.1, 34230.1, 34493.1, 35330.1, 35195.8, 35296.1, 35359.4, 34404.7, 34469.7, 34274.1, 35232.3, 35387.8, 34728.6, 35038.5, 34395.6, 35491.1, 35409.6, 35575.6, 35353.8, 35462.5, 34272.8, 35279.3, 34722.9, 35571.0, 35400.8, 35497.2, 35432.3, 35007]}, {"code": "900073", "name": "신반도체73", "value": 22261, "change": -1.84, "price": 65376, "prev_close": 66601, "spark": [67127.8, 66252.1, 65310.7, 66398.0, 65646.8, 67484.4, 65954.8, 67143.9, 67234.4, 65496.6, 66597.4, 65871.1, 65515.4, 64926.1, 66724.6, 65578.3, 65949.9, 66352.5, 66739.5, 65357.0, 64521.0, 66700.0, 65047.4, 65840.3, 66851.8, 64337.6, 65755.3, 65057.0, 66167.3, 65376]}, {"code": "900106", "name": "신반도체106", "value": 20003, "change": 0.99, "price": 80289, "prev_close": 79502, "spark": [79538.6, 79160.4, 79802.2, 78795.6, 80281.0, 78037.3, 81031.5, 79815.4, 80423.8, 80523.2, 80321.3, 79364.4, 78446.6, 80382.2, 79336.6, 79311.4, 81053.8, 80669.1, 79349.2, 79405.1, 79750.5, 79758.4, 79442.8, 78929.2, 79897.8, 81594.7, 80777.0, 81528.4, 80632.8, 80289]}, {"code": "900137", "name": "신반도체137", "value": 15789, "change": 0.09, "price": 50955, "prev_close": 50909, "spark": [51589.4, 50511.0, 50321.6, 51496.4, 51132.9, 50554.8, 50800.0, 51278.2, 50944.6, 51522.1, 51862.2, 51407.5, 51251.9, 50489.0, 51265.3, 51176.0, 50105.7, 51857.3, 50397.2, 50552.8, 51565.6, 50223.6, 50019.0, 51931.9, 51173.9, 51495.9, 50859.4, 51738.9, 51107.7, 50955]}, {"code": "900014", "name": "신반도체14", "value": 15463, "change": -0.07, "price": 40136, "prev_close": 40164, "spark": [40155.1, 39752.1, 40412.7, 39367.4, 40563.1, 40592.8, 39526.7, 40037.2, 39636.0, 40890.6, 40183.3, 39431.4, 39749.8, 40710.7, 40080.6, 40633.5, 40417.6, 40930.9, 40299.9, 40868.2, 40773.1, 40324.6, 40494.8, 40149.5, 40671.6, 40216.7, 40776.6, 40529.1, 40096.3, 40136]}, {"code": "900083", "name": "신반도체83", "value": 12331, "change": -2.31, "price": 30482, "prev_close": 31203, "spark": [31617.2, 30906.4, 31491.6, 31109.4, 30785.4, 31005.2, 31314.0, 30705.1, 30803.8, 31458.3, 30442.8, 30503.6, 30761.9, 30456.3, 30506.0, 30726.2, 30598.9, 30738.7, 30221.7, 31136.4, 30570.9, 31009.8, 31199.9, 30045.3, 31070.4, 30673.7, 30528.5, 31071.5, 30261.3, 30482]}, {"code": "900059", "name": "신반도체59", "value": 12185, "change": 2.18, "price": 75035, "prev_close": 73434, "spark": [74795.1, 73246.3, 74287.4, 73738.2, 73964.8, 72871.4, 72923.2, 73628.0, 72462.2, 73439.1, 74523.8, 73754.2, 73091.2, 74053.9, 73089.3, 74629.1, 72897.6, 74054.5, 74621.0, 73063.6, 74966.6, 73500.0, 74533.6, 73354.0, 74396.1, 73948.8, 74349.7, 75708.7, 74617.0, 75035]}, {"code": "900006", "name": "신반도체6", "value": 6952, "change": -2.36, "price": 31857, "prev_close": 32627, "spark": [32311.3, 32067.7, 31961.5, 32597.6, 33157.8, 32303.0, 32659.0, 32799.5, 32608.0, 32712.0, 32934.4, 31951.8, 31697.2, 31838.9, 31779.0, 32444.7, 32283.7, 31816.2, 32403.2, 32462.6, 31672.6, 32206.1, 32358.8, 31525.1, 32396.6, 32555.4, 31437.3, 31305.7, 31643.9, 31857]}]}, {"name": "금융", "children": [{"code": "105560", "name": "KB금융", "value": 302000, "change": -1.22, "price": 74085, "prev_close": 75000, "spark": [76357.7, 74662.2, 75574.1, 73648.9, 75438.7, 75219.3, 73631.0, 75586.6, 75785.6, 75013.6, 73561.5, 76086.8, 75458.9, 74137.0, 74346.0, 74143.2, 74512.8, 73993.1, 75468.0, 75355.7, 73200.0, 75702.9, 74707.7, 75248.4, 74857.1, 74020.0, 74872.5, 75527.5, 73435.2, 74085]}, {"code": "055550", "name": "신한지주", "value": 254000, "change": 0.25, "price": 48120, "prev_close": 48000, "spark": [48073.5, 47972.4, 47884.3, 48457.1, 47570.8, 48697.7, 48661.4, 47233.4, 48767.7, 47544.2, 47973.5, 48257.9, 47816.7, 47146.6, 48733.4, 47449.7, 47512.1, 48643.6, 47767.2, 48810.7, 48470.0, 47656.3, 47148.2, 48957.6, 47301.7, 48527.0, 48085.6, 48608.6, 48482.7, 48120]}, {"code": "086790", "name": "하나금융지주", "value": 176000, "change": 0.51, "price": 60306, "prev_close": 60000, "spark": [59977.9, 60717.2, 59039.5, 59360.1, 60504.8, 59585.3, 60260.0, 60009.4, 60159.0, 59915.3, 60698.8, 59707.9, 60616.0, 59584.6, 59548.1, 59243.2, 59427.3, 59261.7, 60276.4, 60832.9, 59451.5, 59537.4, 60194.0, 60784.4, 61402.9, 60323.2, 59750.9, 59321.3, 59557.6, 60306]}, {"code": "032830", "name": "삼성생명", "value": 161000, "change": 0.02, "price": 88018, "prev_close": 88000, "spark": [86871.8, 86290.5, 88121.8, 87207.6, 89672.7, 88191.3, 88699.1, 86688.9, 89302.5, 87973.7, 89318.7, 88267.8, 87899.9, 87798.7, 86897.6, 86430.0, 89563.0, 87932.3, 89145.4, 87662.3, 86513.0, 88468.9, 86442.1, 86779.3, 88236.2, 87324.9, 89755.1, 86673.5, 88948.4, 88018]}, {"code": "323410", "name": "카카오뱅크", "value": 149000, "change": 2.76, "price": 32883, "prev_close": 32000, "spark": [32382.2, 31669.5, 32090.4, 32026.1, 32046.3, 32625.8, 32827.1, 31957.0, 32402.6, 32418.1, 32620.1, 32923.5, 31980.9, 32015.6, 32637.2, 32005.6, 32058.0, 31958.6, 31893.9, 32513.3, 32732.3, 32364.8, 32316.6, 32972.5, 32997.7, 32700.7, 33038.1, 33379.7, 33231.1, 32883]}, {"code": "138040", "name": "메리츠금융지주", "value": 142000, "change": -2.52, "price": 92606, "prev_close": 95000, "spark": [95597.1, 96523.9, 94557.6, 94917.4, 95216.7, 96100.1, 95714.6, 92834.5, 93102.1, 93544.4, 95096.7, 94348.3, 93226.3, 92535.3, 94543.2, 94501.6, 95319.0, 93598.4, 93491.1, 91877.4, 91644.5, 93014.6, 92525.7, 92176.6, 91504.9, 94647.2, 94098.1, 93049.7, 94358.4, 92606]}, {"code": "316140", "name": "우리금융지주", "value": 123000, "change": -2.28, "price": 16612, "prev_close": 17000, "spark": [17114.1, 16833.1, 16667.4, 17129.8, 16926.5, 17033.4, 17195.9, 16694.4, 16949.4, 16968.9, 16860.4, 16581.0, 16738.2, 16715.1, 16925.5, 17036.8, 16672.7, 16901.1, 16618.3, 17041.5, 16940.6, 16752.2, 16675.5, 16568.9, 16561.4, 16977.9, 16588.4, 16648.4, 16949.7, 16612]}, {"code": "005830", "name": "DB손해보험", "value": 52000, "change": -1.72, "price": 90418, "prev_close": 92000, "spark": [92154.5, 91632.1, 90761.3, 91336.8, 92709.6, 92181.1, 92613.3, 90546.3, 91741.9, 93056.1, 91230.9, 92117.2, 89976.4, 93002.3, 91630.2, 90239.0, 89891.8, 91256.7, 91207.2, 89492.4, 92689.4, 92348.0, 90660.5, 89361.9, 91892.1, 90630.4, 91365.1, 90559.2, 89653.1, 90418]}, {"code": "900068", "name": "신은행지주68", "value": 49676, "change": -0.24, "price": 91673, "prev_close": 91894, "spark": [90953.8, 92073.9, 91451.5, 93417.7, 91893.3, 93246.5, 93182.8, 91019.8, 92896.1, 91513.2, 93409.8, 91838.3, 92977.7, 90998.4, 91048.4, 92098.3, 93601.3, 91726.3, 90468.1, 91890.5, 91173.5, 91924.2, 91885.5, 91554.9, 91057.5, 90561.7, 92420.0, 91951.5, 90703.6, 91673]}, {"code": "900003", "name": "신은행지주3", "value": 49348, "change": 2.63, "price": 36659, "prev_close": 35720, "spark": [35453.0, 35712.3, 36390.6, 35642.6, 36565.3, 36310.3, 36136.9, 35436.2, 36660.3, 35463.1, 36725.9, 35829.6, 35522.3, 36646.6, 35586.1, 36807.3, 35527.2, 35748.5, 36846.6, 37024.2, 35744.0, 36812.7, 36087.7, 36645.4, 36346.7, 35914.0, 36310.4, 36849.9, 36675.9, 36659]}, {"code": "900117", "name": "신은행지주117", "value": 48187, "change": -0.48, "price": 111617, "prev_close": 112155, "spark": [113131.8, 113294.9, 113780.8, 110027.6, 110154.2, 112648.1, 113923.3, 114246.2, 113108.6, 111693.5, 110176.9, 112548.3, 113596.0, 111662.6, 112761.6, 113678.1, 109831.3, 113161.9, 110898.7, 111243.8, 110201.7, 111904.7, 112041.3, 113034.4, 110236.4, 109811.5, 113328.4, 112188.6, 110478.5, 111617]}, {"code": "900105", "name": "신은행지주105", "value": 46359, "change": -2.58, "price": 47500, "prev_close": 48758, "spark": [48249.1, 48976.6, 48594.4, 48944.8, 49342.4, 48475.0, 48094.2, 48542.8, 47601.3, 49213.5, 49250.7, 47899.2, 49115.3, 48555.6, 48068.7, 47731.3, 49012.7, 48691.9, 47229.8, 47708.4, 47622.4, 47459.2, 48182.3, 46852.0, 48344.0, 47475.5, 46695.5, 48280.4, 48072.2, 47500]}, {"code": "900037", "name": "신은행지주37", "value": 44920, "change": 2.39, "price": 152926, "prev_close": 149356, "spark": [150007.3, 149459.5, 152074.8, 148417.8, 151676.9, 150626.8, 149191.6, 151053.7, 151080.6, 151551.6, 151938.7, 151684.1, 152903.1, 151741.1, 153547.3, 152097.9, 150157.1, 151086.9, 152058.8, 153116.5, 149311.0, 150688.0, 153578.2, 150203.3, 150060.5, 152674.7, 155440.8, 152868.5, 155332.2, 152926]}, {"code": "001450", "name": "현대해상", "value": 41000, "change": 2.29, "price": 33756, "prev_close": 33000, "spark": [32672.1, 33464.8, 33027.9, 33492.3, 33437.4, 32912.8, 32637.0, 33807.7, 32723.7, 33864.7, 33747.2, 33589.7, 33961.0, 33970.0, 33776.4, 33209.9, 33809.7, 32787.0, 33518.7, 33434.4, 33754.8, 33780.2, 33687.8, 34035.0, 34220.2, 33122.9, 33318.4, 33062.6, 34248.8, 33756]}, {"code": "029780", "name": "삼성카드", "value": 38000, "change": -0.78, "price": 37704, "prev_close": 38000, "spark": [38626.7, 37570.0, 37321.2, 38458.2, 38576.9, 37651.0, 37800.8, 37385.6, 38591.7, 37613.4, 37887.1, 37280.5, 38461.8, 37318.1, 37787.4, 38104.2, 38203.6, 38499.2, 37694.5, 38171.6, 37275.0, 37657.4, 37170.8, 37749.3, 37616.5, 38425.8, 37029.9, 37529.2, 37628.8, 37704]}, {"code": "900129", "name": "신은행지주129", "value": 34041, "change": -0.21, "price": 141827, "prev_close": 142125, "spark": [141346.5, 144843.5, 141352.3, 144373.4, 142905.9, 139581.0, 140792.3, 144709.6, 144590.4, 143872.0, 139706.1, 140379.0, 142793.3, 144664.2, 139431.8, 141026.6, 144733.9, 143578.6, 140267.8, 143801.0, 142227.2, 142399.4, 143675.0, 140374.0, 143435.0, 143505.7, 142402.4, 140584.0, 144583.2, 141827]}, {"code": "900063", "name": "신은행지주63", "value": 30216, "change": -2.35, "price": 98438, "prev_close": 100807, "spark": [99825.2, 99443.6, 101277.8, 98694.6, 98570.0, 101540.3, 99284.9, 99541.2, 98870.8, 98309.3, 100941.8, 100011.1, 100794.0, 99651.5, 100758.0, 99633.8, 97960.6, 99433.4, 101090.4, 97456.9, 100288.4, 100536.5, 99094.3, 98762.9, 100673.6, 97035.5, 98600.3, 98214.0, 99252.5, 98438]}, {"code": "900031", "name": "신은행지주31", "value": 29911, "change": 0.27, "price": 74819, "prev_close": 74618, "spark": [74448.6, 75819.4, 74099.1, 73585.9, 73526.6, 75024.3, 74914.7, 75301.1, 74316.7, 74971.5, 74073.2, 74710.6, 74492.0, 75585.0, 73560.8, 75184.8, 75859.1, 74889.3, 75836.4, 74540.2, 75917.9, 74505.5, 75750.3, 74474.2, 75471.4, 74230.2, 74237.1, 74071.5, 76169.5, 74819]}, {"code": "900123", "name": "신은행지주123", "value": 21295, "change": 0.29, "price": 46215, "prev_close": 46081, "spark": [45281.2, 46699.3, 45338.6, 45349.4, 46541.2, 46680.7, 46213.2, 46273.5, 46232.1, 45807.9, 45429.1, 45861.4, 46442.3, 46603.9, 46826.3, 46559.1, 47021.0, 46345.3, 45890.1, 46313.0, 45642.5, 46467.9, 45673.0, 45463.1, 46830.4, 45951.7, 46686.6, 46342.8, 46778.3, 46215]}, {"code": "900099", "name": "신은행지주99", "value": 21246, "change": 2.55, "price": 80878, "prev_close": 78867, "spark": [79732.1, 79330.0, 79571.7, 79258.5, 79496.9, 79724.2, 79908.9, 77828.4, 78688.2, 80340.0, 80924.1, 79147.8, 78668.4, 78614.3, 80346.8, 78514.7, 80756.0, 81572.2, 78794.5, 80283.1, 79853.3, 80173.3, 79284.2, 79852.5, 79963.1, 82028.6, 80981.3, 81979.5, 79694.4, 80878]}, {"code": "900133", "name": "신은행지주133", "value": 20491, "change": 2.41, "price": 18701, "prev_close": 18261, "spark": [18391.0, 18105.6, 18412.4, 18295.7, 18278.3, 18167.1, 18542.7, 18078.3, 18329.9, 18235.4, 18546.2, 18417.8, 18568.0, 18118.1, 18395.0, 18562.8, 18135.4, 18370.3, 18318.1, 18277.9, 18381.5, 18451.0, 18226.5, 18794.7, 18382.5, 18550.7, 18807.8, 18670.8, 18935.2, 18701]}, {"code": "900030", "name": "신은행지주30", "value": 20256, "change": 2.42, "price": 20200, "prev_close": 19723, "spark": [19639.5, 19934.7, 19704.1, 19739.6, 19447.5, 19654.0, 19764.3, 19760.7, 19967.6, 19700.8, 19810.6, 20280.4, 19655.1, 20298.3, 19920.9, 20122.8, 19874.4, 19951.4, 19700.5, 19983.4, 19971.4, 19727.9, 20384.2, 20299.9, 19892.7, 20359.7, 19808.3, 20274.7, 20208.3, 20200]}, {"code": "900007", "name": "신은행지주7", "value": 19328, "change": 0.32, "price": 66081, "prev_close": 65870, "spark": [65472.1, 66478.5, 66727.8, 66724.7, 65202.2, 64972.0, 65113.6, 66191.8, 66616.2, 66346.7, 65089.5, 66671.4, 65941.9, 66637.3, 66658.9, 65844.2, 67107.7, 66164.2, 66358.7, 66337.5, 66978.4, 66359.1, 65107.5, 64896.3, 65891.9, 65530.7, 65463.6, 64893.3, 66093.1, 66081]}, {"code": "900018", "name": "신은행지주18", "value": 11078, "change": -0.46, "price": 44411, "prev_close": 44616, "spark": [43794.8, 44376.0, 44223.8, 44852.0, 45435.9, 43853.0, 44740.9, 44361.5, 44702.3, 45359.5, 44969.9, 43723.0, 45258.0, 44651.5, 43963.3, 44696.6, 44505.4, 45309.0, 44401.0, 45034.2, 45074.0, 45324.5, 43722.1, 44713.0, 43627.7, 44808.1, 45304.4, 44467.9, 44613.1, 44411]}, {"code": "900087", "name": "신은행지주87", "value": 10613, "change": -1.41, "price": 74097, "prev_close": 75157, "spark": [74513.2, 74849.8, 74604.6, 75337.2, 75867.8, 75410.6, 73650.9, 73699.1, 75393.1, 74188.1, 75454.4, 75218.8, 75922.6, 75788.0, 74151.2, 74853.8, 73509.3, 74090.4, 75885.2, 75050.7, 74105.7, 74671.0, 75651.0, 73751.9, 73914.2, 75107.6, 75134.9, 74674.3, 75108.5, 74097]}, {"code": "900121", "name": "신은행지주121", "value": 8972, "change": 0.69, "price": 50263, "prev_close": 49919, "spark": [50747.8, 49113.1, 50285.0, 49971.3, 48997.5, 49593.7, 50896.9, 49683.5, 50548.7, 49406.2, 51042.5, 49355.5, 49650.5, 50652.2, 50100.3, 50176.7, 50588.4, 50173.8, 50457.9, 50901.0, 50393.4, 50363.5, 49484.7, 49550.1, 50591.3, 50466.3, 51036.9, 50683.9, 49333.7, 50263]}, {"code": "900028", "name": "신은행지주28", "value": 8003, "change": -2.55, "price": 20042, "prev_close": 20566, "spark": [20942.9, 20637.0, 20732.6, 20739.7, 20280.9, 20266.9, 20831.2, 20667.8, 20745.6, 20158.4, 20528.5, 20424.0, 20301.8, 20547.4, 20536.2, 20297.5, 20211.9, 19988.1, 20000.2, 20306.7, 20503.8, 19827.7, 20153.0, 20047.3, 20480.6, 20283.8, 20109.0, 19777.3, 19726.5, 20042]}, {"code": "900107", "name": "신은행지주107", "value": 7058, "change": -1.02, "price": 34095, "prev_close": 34446, "spark": [34999.1, 33953.3, 34336.8, 35018.8, 34018.8, 34319.1, 34168.5, 33716.0, 33740.2, 34340.0, 33964.9, 34987.5, 34130.4, 33645.4, 34864.3, 34727.2, 34457.0, 34637.8, 33734.0, 33925.5, 34653.8, 34459.3, 33687.2, 34448.0, 34085.5, 33468.7, 33557.5, 33786.4, 34563.9, 34095]}, {"code": "900000", "name": "신은행지주0", "value": 6639, "change": 1.9, "price": 45756, "prev_close": 44903, "spark": [44953.7, 44220.6, 44573.9, 44627.2, 44192.8, 44903.2, 45617.3, 45030.3, 44426.0, 45909.1, 45374.1, 44341.4, 45284.0, 44813.0, 44662.4, 45214.6, 45583.7, 44928.1, 45279.7, 45762.6, 44732.8, 46389.4, 44758.8, 45627.2, 45622.3, 46532.1, 45766.9, 45496.7, 45671.9, 45756]}]}, {"name": "헬스케어", "children": [{"code": "207940", "name": "삼성바이오로직스", "value": 720000, "change": -0.27, "price": 1097030, "prev_close": 1100000, "spark": [1121108.6, 1089087.5, 1078567.3, 1112353.4, 1092780.1, 1109709.7, 1105013.6, 1111196.9, 1109501.0, 1091729.0, 1078980.8, 1100892.6, 1112528.2, 1084411.1, 1110815.3, 1096911.4, 1106935.3, 1104039.7, 1111825.4, 1078882.5, 1110071.3, 1095992.2, 1088682.9, 1077626.2, 1084354.4, 1077337.9, 1116354.1, 1097909.9, 1118595.7, 1097030]}, {"code": "068270", "name": "셀트리온", "value": 410000, "change": 2.97, "price": 180198, "prev_close": 175000, "spark": [173222.4, 177005.4, 173132.4, 174507.2, 177741.7, 178533.3, 174864.4, 173548.3, 175483.0, 179420.9, 178546.5, 179816.5, 176334.1, 180745.0, 177482.3, 177671.0, 180926.5, 178186.2, 180397.2, 180042.5, 175549.9, 179502.7, 181266.8, 179450.4, 178013.2, 176454.3, 180820.2, 178444.8, 180758.5, 180198]}, {"code": "000100", "name": "유한양행", "value": 58000, "change": 0.92, "price": 95874, "prev_close": 95000, "spark": [95727.7, 94460.8, 93305.2, 96509.5, 94555.1, 97061.1, 94316.3, 97051.9, 96958.8, 93641.5, 95828.7, 94807.3, 96516.3, 96079.8, 97158.4, 94082.1, 95894.7, 96591.2, 93758.5, 93913.0, 96670.9, 95120.3, 95213.8, 95951.1, 96126.3, 96440.1, 97504.8, 95322.9, 96852.8, 95874]}, {"code": "900036", "name": "신바이오36", "value": 49796, "change": -1.15, "price": 98254, "prev_close": 99397, "spark": [98874.2, 98628.2, 98448.4, 101088.7, 97376.2, 97966.1, 99230.3, 100746.4, 97579.5, 100123.0, 99804.8, 97841.7, 99363.8, 99647.0, 100804.9, 97627.5, 97334.8, 97052.9, 97401.1, 99486.7, 100563.1, 99789.7, 100367.5, 100402.8, 99110.7, 99235.2, 98568.7, 97508.9, 97507.2, 98254]}, {"code": "900110", "name": "신바이오110", "value": 48842, "change": 1.32, "price": 124627, "prev_close": 123003, "spark": [125133.6, 123745.8, 124579.4, 123215.0, 121339.8, 121792.7, 121539.1, 124842.8, 121089.7, 123776.5, 122909.7, 125133.0, 123932.7, 124289.3, 121724.4, 122892.5, 126389.7, 125046.2, 124139.2, 125408.9, 125735.0, 122054.2, 126589.9, 125000.6, 124097.7, 125300.9, 123683.9, 126399.2, 125968.1, 124627]}, {"code": "900041", "name": "신바이오41", "value": 46943, "change": -1.74, "price": 52913, "prev_close": 53850, "spark": [54416.8, 53032.5, 53791.4, 54532.4, 54422.1, 53726.8, 53241.6, 52908.4, 54511.6, 52978.2, 54474.0, 53534.6, 53005.2, 52538.6, 52754.9, 54331.2, 52855.7, 53565.3, 53510.6, 52375.6, 53502.2, 53365.8, 53309.9, 52410.9, 53338.0, 53893.1, 52666.2, 53874.9, 51974.2, 52913]}, {"code": "900076", "name": "신바이오76", "value": 46874, "change": 2.8, "price": 41784, "prev_close": 40646, "spark": [39886.2, 40921.6, 40852.7, 41016.2, 41249.1, 40702.7, 41113.7, 40917.3, 41172.4, 40647.6, 41801.6, 41049.1, 41626.1, 41465.3, 40856.8, 40520.9, 40538.3, 41212.1, 41326.0, 40896.9, 41609.1, 41156.8, 41874.3, 41940.0, 42190.8, 42421.5, 41049.1, 41489.1, 41847.8, 41784]}, {"code": "900066", "name": "신바이오66", "value": 41256, "change": -1.67, "price": 89619, "prev_close": 91141, "spark": [89787.9, 90907.9, 89748.7, 89372.6, 92527.7, 92184.1, 90532.7, 92432.3, 92163.4, 91792.4, 92171.1, 91356.4, 89399.4, 89237.6, 92184.2, 90234.8, 91660.2, 90239.4, 88726.8, 89761.1, 89938.0, 89109.5, 90285.2, 88316.0, 89097.6, 90178.5, 91005.5, 90342.4, 88903.4, 89619]}, {"code": "326030", "name": "SK바이오팜", "value": 41000, "change": -0.25, "price": 77805, "prev_close": 78000, "spark": [76778.5, 76854.0, 77253.5, 77562.1, 77672.0, 76551.1, 76562.8, 78145.3, 77518.4, 77281.6, 77579.1, 77771.5, 78074.5, 78925.0, 78289.4, 78244.7, 76736.7, 76630.5, 77484.3, 79387.2, 78045.5, 77440.5, 76745.0, 78164.2, 77531.7, 76401.1, 76390.2, 78483.2, 78757.7, 77805]}, {"code": "128940", "name": "한미약품", "value": 39000, "change": -2.56, "price": 48253, "prev_close": 49521, "spark": [49725.8, 49506.9, 49101.3, 49607.8, 48694.5, 50249.1, 49720.4, 48827.2, 48855.2, 49760.9, 49146.0, 49442.8, 48609.7, 49561.9, 48654.6, 49200.5, 49747.6, 48939.1, 49306.6, 49125.1, 49009.4, 47689.1, 48510.0, 49416.8, 49017.6, 48960.9, 48534.0, 48767.8, 48457.9, 48253]}, {"code": "900032", "name": "신바이오32", "value": 34714, "change": 2.01, "price": 114707, "prev_close": 112447, "spark": [113461.7, 113784.7, 112053.0, 114156.5, 111575.7, 113169.5, 113834.5, 111573.6, 112799.8, 112775.6, 112826.8, 111945.5, 113390.4, 113971.5, 113407.7, 115214.3, 114737.2, 114715.9, 113935.4, 114207.0, 116291.1, 113984.3, 113596.3, 116334.8, 114132.2, 114547.2, 114685.5, 115358.1, 116316.0, 114707]}, {"code": "900071", "name": "신바이오71", "value": 33492, "change": -1.63, "price": 133130, "prev_close": 135336, "spark": [136365.4, 135846.1, 133545.1, 133757.9, 135341.0, 133490.5, 137397.9, 133725.8, 133603.8, 133092.6, 135666.9, 133524.9, 133618.0, 136656.6, 135844.1, 132988.6, 132105.3, 134983.4, 133326.1, 136447.6, 135510.0, 136159.4, 135284.6, 132470.5, 132379.4, 134574.6, 132540.1, 132975.3, 131909.1, 133130]}, {"code": "145020", "name": "휴젤", "value": 32000, "change": 2.92, "price": 200694, "prev_close": 195000, "spark": [192608.3, 195506.0, 198868.9, 197163.9, 192873.5, 196910.4, 196875.1, 194306.9, 197934.1, 197016.3, 198070.8, 193567.3, 196660.1, 199297.4, 194542.1, 200118.8, 194169.2, 198742.1, 201978.9, 197983.2, 202419.2, 202160.9, 199138.5, 197103.2, 203436.5, 198473.0, 201276.2, 203576.1, 197201.9, 200694]}, {"code": "900096", "name": "신바이오96", "value": 31148, "change": -1.47, "price": 98671, "prev_close": 100143, "spark": [101085.2, 101475.1, 98215.4, 101654.3, 99616.0, 101221.8, 101551.2, 97957.8, 101063.9, 100822.8, 98397.4, 100567.5, 101003.3, 98652.3, 97606.9, 98586.0, 99736.6, 100971.2, 98578.3, 98998.4, 99685.6, 99173.1, 100562.7, 97531.8, 98941.4, 97977.5, 100042.1, 98104.3, 99634.0, 98671]}, {"code": "900001", "name": "신바이오1", "value": 21049, "change": -1.2, "price": 61349, "prev_close": 62094, "spark": [61324.1, 62649.1, 62756.3, 62183.4, 62622.7, 61169.3, 62813.9, 62888.6, 62691.0, 61900.4, 60823.1, 62226.8, 61012.3, 60878.2, 61301.5, 61090.4, 61096.0, 61008.3, 62254.3, 62720.1, 61094.2, 62101.5, 60329.9, 61880.3, 61950.5, 60377.2, 60489.2, 60926.3, 61142.6, 61349]}, {"code": "900016", "name": "신바이오16", "value": 15189, "change": 2.08, "price": 75194, "prev_close": 73662, "spark": [74828.2, 74526.3, 74339.8, 74237.5, 75198.5, 73527.6, 73139.2, 75407.3, 74018.9, 74001.9, 75660.5, 73862.9, 74903.2, 75590.3, 75175.5, 75362.7, 75486.5, 75347.6, 75155.3, 74953.9, 75582.8, 74848.1, 74908.9, 74461.3, 76184.8, 73816.3, 76024.4, 76300.1, 74245.3, 75194]}, {"code": "900051", "name": "신바이오51", "value": 14150, "change": 2.86, "price": 26520, "prev_close": 25783, "spark": [25600.3, 25829.6, 25426.4, 25546.4, 25972.5, 25475.8, 25946.2, 26288.1, 25936.6, 26025.5, 25991.1, 25593.2, 26047.8, 26438.7, 26375.5, 26053.6, 26525.1, 26475.6, 26323.4, 25783.4, 26126.2, 25853.8, 26866.2, 26828.4, 25935.7, 26878.4, 25947.0, 26372.5, 26779.9, 26520]}, {"code": "900046", "name": "신바이오46", "value": 9337, "change": -0.56, "price": 47063, "prev_close": 47328, "spark": [48201.1, 47082.6, 48046.5, 47203.7, 48076.7, 47051.7, 46483.0, 48137.8, 47960.0, 46554.9, 47914.9, 46509.6, 48146.2, 47007.9, 46498.6, 48092.2, 47812.1, 47654.9, 48064.3, 47084.7, 47557.7, 46993.3, 46899.7, 46608.9, 47034.6, 46450.3, 46504.0, 47787.6, 47571.9, 47063]}]}, {"name": "경기관련소비재", "children": [{"code": "005380", "name": "현대차", "value": 553000, "change": -0.46, "price": 228942, "prev_close": 230000, "spark": [231467.0, 231015.9, 233922.0, 233453.3, 227479.2, 225855.0, 230641.4, 229254.1, 231283.5, 233080.3, 227297.5, 225425.0, 229003.2, 229889.8, 231818.8, 231980.9, 226120.8, 233899.0, 226908.8, 233120.1, 229967.3, 229943.4, 231693.2, 232076.5, 226715.1, 232533.6, 233499.3, 229209.6, 228186.9, 228942]}, {"code": "000270", "name": "기아", "value": 448000, "change": 2.74, "price": 107877, "prev_close": 105000, "spark": [105244.7, 105494.8, 106213.4, 103895.8, 106168.1, 105737.0, 103640.0, 105023.1, 106412.1, 105380.0, 106097.6, 106938.4, 105794.6, 105426.2, 105024.8, 106651.8, 105469.6, 105501.4, 108328.5, 105350.3, 106824.6, 105174.5, 106805.7, 106921.5, 107510.4, 106998.7, 106522.2, 106946.2, 105961.4, 107877]}, {"code": "012330", "name": "현대모비스", "value": 251000, "change": 1.49, "price": 253725, "prev_close": 250000, "spark": [248691.6, 250490.1, 253600.0, 245833.9, 249267.2, 251707.6, 246097.6, 246563.3, 254119.5, 252044.9, 253024.5, 248540.9, 248586.9, 255800.8, 249800.8, 256077.6, 249130.3, 249037.7, 254762.8, 254946.1, 255150.2, 256903.6, 254811.3, 255022.4, 252033.7, 250565.7, 251529.2, 251266.4, 253254.0, 253725]}, {"code": "900061", "name": "신자동차61", "value": 49596, "change": -1.4, "price": 69439, "prev_close": 70425, "spark": [69762.7, 70426.5, 70349.4, 69208.1, 71625.8, 70170.2, 71164.6, 71337.8, 69793.8, 69879.9, 70258.6, 69276.8, 69033.5, 69318.5, 71156.5, 70134.8, 69652.0, 68881.5, 69340.4, 69445.2, 70670.9, 69709.0, 70106.4, 70156.4, 68935.0, 70468.2, 70836.7, 69900.6, 69446.9, 69439]}, {"code": "900090", "name": "신자동차90", "value": 48237, "change": 1.37, "price": 136038, "prev_close": 134199, "spark": [133395.1, 132303.7, 134579.5, 132670.4, 136571.8, 137184.6, 137067.9, 134773.5, 136551.7, 132453.8, 136563.8, 132440.1, 132274.2, 133051.0, 135798.3, 132799.5, 133314.9, 133746.6, 135101.3, 133012.2, 136216.9, 137891.9, 137840.2, 136524.4, 133085.9, 135959.7, 135365.4, 133281.5, 137183.7, 136038]}, {"code": "900060", "name": "신자동차60", "value": 46120, "change": 1.86, "price": 68833, "prev_close": 67576, "spark": [66246.6, 68481.6, 68141.9, 68549.1, 68877.7, 66710.8, 66724.7, 66912.8, 67074.6, 68039.0, 68877.4, 67412.2, 67812.3, 67790.0, 67924.1, 68405.2, 69619.3, 67558.1, 68863.0, 69357.4, 68866.2, 69472.6, 69244.3, 67453.7, 68283.9, 68804.7, 67480.8, 67395.7, 67884.9, 68833]}, {"code": "900038", "name": "신자동차38", "value": 40005, "change": 1.78, "price": 88419, "prev_close": 86873, "spark": [87385.2, 86329.2, 88667.5, 88708.5, 88482.2, 88621.7, 86236.8, 88665.1, 87979.3, 87588.8, 86596.3, 88959.4, 88164.8, 86789.1, 87771.4, 88231.7, 86591.8, 89018.5, 86119.5, 86850.1, 86680.7, 89126.6, 89180.7, 89615.9, 87442.5, 88431.9, 88494.9, 89548.3, 88991.8, 88419]}, {"code": "900057", "name": "신자동차57", "value": 38392, "change": 2.58, "price": 82383, "prev_close": 80311, "spark": [81153.3, 79195.9, 82063.6, 81264.0, 80599.4, 82231.3, 79269.0, 80603.8, 81998.6, 80428.7, 81911.9, 82595.8, 80828.0, 82141.3, 79761.2, 80635.8, 83077.4, 81494.6, 81121.9, 83122.2, 81515.4, 82403.6, 82412.3, 80589.0, 82416.6, 83079.4, 82870.9, 80862.8, 81172.1, 82383]}, {"code": "900072", "name": "신자동차72", "value": 34735, "change": -2.86, "price": 109852, "prev_close": 113086, "spark": [111567.1, 112489.7, 112251.1, 110956.8, 114586.6, 112285.8, 113565.5, 110557.8, 110380.6, 111779.2, 112221.4, 111914.1, 110004.8, 109833.2, 111763.1, 111839.3, 112551.7, 112788.5, 108936.0, 110588.5, 112082.4, 111732.2, 110894.3, 112686.3, 109279.2, 110390.8, 111000.9, 108622.8, 108948.1, 109852]}, {"code": "900126", "name": "신자동차126", "value": 32648, "change": -0.42, "price": 48921, "prev_close": 49127, "spark": [48272.7, 48992.4, 48958.7, 49075.1, 48271.0, 48605.9, 48588.8, 49322.2, 49254.0, 48467.5, 48287.1, 48666.8, 49920.2, 48706.5, 49262.9, 49615.6, 48679.9, 48683.0, 49616.6, 49695.7, 49913.0, 48265.9, 48619.9, 49838.9, 48371.2, 48585.8, 49851.4, 49852.5, 48520.0, 48921]}, {"code": "900134", "name": "신자동차134", "value": 31634, "change": 1.78, "price": 96037, "prev_close": 94357, "spark": [96154.3, 95498.6, 93804.4, 93687.2, 95687.3, 94128.5, 96364.7, 93609.6, 96731.0, 93649.1, 95964.6, 93177.2, 95925.3, 96812.0, 94052.9, 96369.7, 96556.7, 93686.9, 96735.9, 96591.3, 96180.2, 94187.6, 94874.2, 94739.4, 94418.8, 95510.0, 95390.7, 95725.5, 96355.3, 96037]}, {"code": "900127", "name": "신자동차127", "value": 23254, "change": 0.48, "price": 50260, "prev_close": 50020, "spark": [50033.2, 50873.3, 50421.9, 50132.5, 50637.5, 49778.9, 50864.7, 50152.1, 50363.9, 49260.1, 50643.4, 50427.8, 49827.8, 50423.1, 49219.7, 51116.3, 50509.2, 49958.8, 50676.9, 51113.5, 50045.7, 49209.8, 49717.0, 50231.8, 50256.4, 50388.8, 50386.4, 50134.4, 50032.9, 50260]}, {"code": "900092", "name": "신자동차92", "value": 22370, "change": 0.64, "price": 53916, "prev_close": 53573, "spark": [53983.8, 52831.7, 54670.1, 53571.4, 53179.2, 54539.2, 52750.9, 54370.4, 54164.1, 53352.4, 53352.9, 54316.3, 53760.5, 53399.7, 52870.9, 54229.2, 53659.7, 52840.7, 52804.0, 54252.3, 52780.0, 53483.0, 52990.8, 54492.2, 54784.1, 54387.4, 53915.0, 54004.3, 53539.7, 53916]}]}, {"name": "커뮤니케이션", "children": [{"code": "035420", "name": "NAVER", "value": 352000, "change": 1.31, "price": 217817, "prev_close": 215000, "spark": [214669.9, 217691.9, 216325.3, 212559.4, 216759.6, 214576.3, 217651.5, 219018.1, 215338.1, 215260.8, 211654.1, 213583.9, 214234.7, 218038.4, 218939.2, 217131.2, 219163.9, 216973.0, 215579.4, 214206.5, 213579.4, 218527.3, 217045.5, 221293.7, 215705.6, 216458.3, 216589.4, 214261.7, 216430.3, 217817]}, {"code": "035720", "name": "카카오", "value": 258000, "change": 0.48, "price": 58278, "prev_close": 58000, "spark": [57236.2, 58413.9, 58719.6, 59004.4, 58248.2, 58448.8, 57621.7, 57457.4, 57183.5, 57790.7, 57259.6, 57845.2, 58339.6, 58298.8, 57954.6, 58112.5, 58240.3, 59139.9, 59176.4, 57420.3, 57415.0, 57708.9, 57481.4, 59017.6, 58508.4, 59091.7, 59302.5, 58222.9, 57557.7, 58278]}, {"code": "017670", "name": "SK텔레콤", "value": 121000, "change": 2.34, "price": 56287, "prev_close": 55000, "spark": [55138.7, 55389.0, 54884.2, 55114.5, 55650.6, 55095.5, 54517.1, 55457.9, 56021.2, 54770.2, 54391.7, 54868.7, 55056.7, 56209.0, 55769.1, 56279.3, 55699.5, 55778.8, 55962.5, 55320.6, 55984.6, 57037.2, 56071.0, 56598.9, 56650.5, 55977.5, 55520.2, 56029.7, 56773.9, 56287]}, {"code": "030200", "name": "KT", "value": 103000, "change": 2.61, "price": 38992, "prev_close": 38000, "spark": [37606.4, 38619.0, 37339.0, 37732.9, 38701.9, 37527.0, 38775.1, 37642.8, 38760.2, 37855.5, 38712.8, 38671.4, 38973.7, 38616.8, 38367.0, 38694.4, 38991.7, 39070.6, 39092.2, 38759.3, 38734.5, 38869.5, 38235.4, 39533.9, 38497.6, 38968.6, 39595.0, 38946.1, 39581.9, 38992]}, {"code": "032640", "name": "LG유플러스", "value": 51000, "change": 2.98, "price": 11328, "prev_close": 11000, "spark": [10835.1, 11124.8, 10982.7, 10834.4, 10944.5, 11127.4, 11159.3, 10912.9, 10930.3, 11021.3, 10998.8, 11280.2, 11087.2, 10985.0, 11218.4, 11227.7, 11124.5, 11000.0, 11337.1, 11336.8, 11182.2, 11350.8, 11337.1, 11431.1, 11251.0, 11277.4, 11331.2, 11472.6, 11474.0, 11328]}, {"code": "900035", "name": "신통신35", "value": 48920, "change": -2.24, "price": 88071, "prev_close": 90089, "spark": [90564.0, 90714.4, 91183.2, 90921.9, 89450.3, 91390.2, 90815.9, 89583.3, 88908.3, 88700.4, 89559.8, 88022.2, 90495.5, 90200.0, 90503.3, 89969.1, 87376.0, 89350.5, 90022.6, 87062.8, 90210.1, 87422.8, 88404.9, 90221.2, 88164.6, 90095.6, 89722.0, 89556.4, 87442.6, 88071]}, {"code": "900103", "name": "신통신103", "value": 43564, "change": 1.02, "price": 146375, "prev_close": 144897, "spark": [143573.9, 145853.1, 143537.5, 144299.6, 147465.2, 143193.5, 144595.9, 144115.1, 146472.5, 143799.1, 146317.1, 146650.3, 142587.5, 145423.8, 143460.0, 144058.4, 146766.3, 142890.3, 146959.6, 147722.0, 148774.5, 145512.4, 143864.6, 143556.4, 145435.6, 147522.3, 143894.3, 145180.2, 148554.7, 146375]}, {"code": "900086", "name": "신통신86", "value": 42182, "change": 2.78, "price": 135031, "prev_close": 131379, "spark": [133071.2, 133527.4, 132395.2, 132713.3, 129551.3, 132350.2, 132730.2, 130446.1, 131582.4, 130962.3, 133979.1, 135032.0, 133516.9, 132704.7, 131614.6, 135409.9, 131449.4, 131484.3, 134888.0, 132969.7, 133516.1, 135595.6, 132787.1, 135056.5, 133041.1, 135072.8, 135847.8, 133617.4, 137288.5, 135031]}, {"code": "900047", "name": "신통신47", "value": 42170, "change": 0.72, "price": 142042, "prev_close": 141027, "spark": [141926.6, 139934.7, 141197.5, 141185.8, 142574.8, 140040.0, 138705.9, 143532.5, 143890.0, 141312.7, 139176.5, 141409.4, 141980.4, 141642.5, 144230.9, 144318.1, 144052.2, 139530.9, 143706.9, 142080.4, 140962.2, 142801.3, 143289.6, 144414.0, 143403.1, 139155.9, 139479.8, 140620.8, 139392.4, 142042]}, {"code": "900052", "name": "신통신52", "value": 41789, "change": 1.86, "price": 135935, "prev_close": 133453, "spark": [132898.0, 132377.4, 134780.1, 135161.9, 133379.6, 133349.4, 134730.5, 134256.7, 132249.0, 131959.0, 132019.7, 136683.0, 137058.9, 132691.6, 133709.1, 135206.7, 136253.5, 135722.6, 135771.9, 134046.9, 134824.7, 137715.7, 133914.7, 134032.1, 137815.9, 133504.6, 136288.8, 133344.3, 136752.4, 135935]}, {"code": "900008", "name": "신통신8", "value": 38118, "change": -1.37, "price": 52296, "prev_close": 53022, "spark": [52226.3, 53432.3, 53393.8, 52244.1, 53869.9, 52945.3, 53464.1, 53308.9, 52125.4, 52016.6, 53360.0, 52263.2, 53530.1, 53264.6, 51687.2, 53289.1, 52144.7, 51684.3, 53015.7, 52706.8, 51636.7, 52402.7, 52178.7, 52445.5, 52561.2, 52119.4, 51858.9, 51515.4, 52475.7, 52296]}, {"code": "900012", "name": "신통신12", "value": 34439, "change": 0.81, "price": 60422, "prev_close": 59937, "spark": [60518.5, 58751.0, 60836.9, 58808.0, 58906.2, 59691.5, 61052.6, 59277.8, 61183.0, 58964.2, 60836.5, 60637.9, 60513.7, 59488.3, 59562.5, 61192.7, 59769.2, 61009.0, 60410.7, 59334.7, 60690.2, 59206.9, 59635.8, 60359.7, 59240.9, 60115.6, 61282.9, 61273.2, 61066.3, 60422]}, {"code": "900136", "name": "신통신136", "value": 31282, "change": -2.49, "price": 40293, "prev_close": 41322, "spark": [41407.5, 40493.4, 40768.5, 41318.3, 40864.0, 41342.3, 41050.9, 41221.3, 41027.4, 41442.0, 40476.2, 41577.0, 41316.0, 40449.9, 40029.6, 40644.7, 40323.9, 40471.2, 41230.6, 41255.7, 41339.2, 39773.3, 40794.9, 41068.4, 40836.6, 39796.6, 40447.5, 39942.0, 40315.6, 40293]}, {"code": "900017", "name": "신통신17", "value": 27059, "change": -2.45, "price": 23734, "prev_close": 24330, "spark": [24531.0, 23923.2, 24688.9, 24645.6, 24266.6, 24418.0, 24085.7, 24636.7, 23771.6, 23761.2, 23776.6, 24407.7, 23679.8, 24127.3, 23980.6, 24462.5, 23751.3, 23753.8, 23784.5, 24225.1, 24109.6, 24121.9, 23705.2, 23640.8, 23433.0, 23534.0, 24061.4, 23855.5, 23427.4, 23734]}, {"code": "900029", "name": "신통신29", "value": 23965, "change": 2.3, "price": 46590, "prev_close": 45543, "spark": [45196.0, 44871.8, 45350.7, 46154.7, 45597.4, 45654.8, 46416.1, 45032.1, 46404.7, 45502.7, 46285.2, 46132.4, 45444.9, 46676.6, 45392.8, 46477.8, 46993.4, 45963.2, 45352.1, 45853.9, 46861.4, 45693.3, 47179.7, 47034.1, 46513.7, 46538.9, 45726.4, 45775.9, 47101.4, 46590]}, {"code": "900124", "name": "신통신124", "value": 17465, "change": -3.0, "price": 18470, "prev_close": 19041, "spark": [19285.3, 19378.1, 18729.0, 19221.3, 18868.1, 19039.0, 19029.9, 18964.2, 18705.5, 19095.0, 18491.0, 18502.8, 19102.2, 18743.4, 18491.2, 19045.0, 18969.4, 18581.9, 18348.8, 18638.2, 18402.0, 18682.2, 18845.5, 18510.6, 18220.9, 18684.1, 18287.4, 18298.6, 18258.6, 18470]}, {"code": "900039", "name": "신통신39", "value": 15708, "change": 2.16, "price": 74471, "prev_close": 72896, "spark": [71849.8, 73290.6, 73353.5, 73498.0, 73110.3, 74308.1, 73159.7, 72048.4, 72982.3, 73144.5, 73864.3, 74379.0, 72800.7, 75074.1, 73786.6, 72279.6, 73415.1, 74455.1, 73813.2, 74766.4, 73517.7, 74232.2, 73559.5, 73461.4, 72787.7, 74543.1, 72906.0, 75287.9, 73764.1, 74471]}, {"code": "900078", "name": "신통신78", "value": 15016, "change": 0.85, "price": 46302, "prev_close": 45912, "spark": [45966.3, 46419.4, 46864.0, 46830.0, 45225.0, 46269.6, 45560.1, 46591.7, 46792.2, 45210.4, 46965.7, 45540.1, 46715.0, 46637.5, 45831.2, 46741.9, 46766.4, 45540.6, 46325.3, 46734.6, 46546.9, 46961.1, 45334.0, 46592.7, 47063.6, 46366.0, 46378.5, 45697.7, 47192.4, 46302]}, {"code": "900002", "name": "신통신2", "value": 14144, "change": 0.98, "price": 47721, "prev_close": 47258, "spark": [47338.3, 46654.5, 46407.9, 46458.6, 47515.8, 46421.3, 47311.7, 47048.5, 47603.5, 47986.6, 47113.6, 46817.9, 48026.8, 48168.3, 46640.7, 46825.0, 47904.1, 46845.3, 46802.6, 47611.5, 47319.4, 46777.3, 47999.6, 47934.7, 47805.3, 47345.1, 47334.5, 48597.4, 48148.6, 47721]}, {"code": "900116", "name": "신통신116", "value": 11181, "change": -2.24, "price": 55620, "prev_close": 56894, "spark": [57919.3, 57182.4, 56081.7, 57805.5, 57149.3, 57628.8, 57269.3, 55971.1, 56740.8, 55776.6, 56025.2, 56830.4, 55538.0, 56832.2, 57277.7, 57233.5, 55950.1, 57247.0, 57138.3, 55019.1, 56243.3, 56908.3, 56967.8, 55262.7, 55985.6, 56767.3, 54952.3, 56253.7, 55081.0, 55620]}, {"code": "900100", "name": "신통신100", "value": 9196, "change": 0.23, "price": 16039, "prev_close": 16002, "spark": [16089.6, 16300.6, 16211.1, 16115.1, 16154.4, 15903.2, 15696.3, 15824.8, 16136.3, 15917.7, 16199.0, 16157.6, 15727.5, 15979.1, 15968.4, 15807.2, 15967.3, 16268.7, 15929.6, 15946.3, 16238.5, 16214.1, 16080.2, 16197.1, 15856.6, 16002.7, 16227.1, 15737.1, 15729.8, 16039]}, {"code": "900085", "name": "신통신85", "value": 8796, "change": -1.93, "price": 11634, "prev_close": 11863, "spark": [11664.8, 11701.5, 11789.2, 11947.2, 11853.3, 12008.8, 11626.2, 11851.4, 11852.7, 11783.9, 11565.7, 11982.0, 11612.3, 11941.7, 11592.9, 11559.0, 11599.6, 11584.5, 11812.6, 11816.3, 11812.1, 11587.9, 11587.6, 11559.2, 11463.9, 11699.0, 11815.8, 11488.6, 11577.1, 11634]}, {"code": "900044", "name": "신통신44", "value": 7103, "change": 1.68, "price": 24711, "prev_close": 24303, "spark": [24622.9, 24440.4, 24311.4, 23946.6, 24069.4, 24509.7, 24858.7, 24375.1, 24035.3, 24711.0, 24414.8, 24847.9, 24239.4, 24626.0, 24388.6, 24386.4, 24410.8, 24232.3, 24106.0, 24510.6, 24350.4, 24931.6, 24676.0, 24281.7, 24834.8, 24256.0, 24835.0, 24987.5, 24611.9, 24711]}, {"code": "900104", "name": "신통신104", "value": 5471, "change": -0.81, "price": 19749, "prev_close": 19910, "spark": [19952.6, 20173.9, 20150.7, 19829.3, 19916.1, 20172.3, 19857.0, 20172.8, 19847.0, 19527.6, 20172.8, 20018.4, 19845.2, 20154.3, 20069.8, 19967.1, 19916.3, 19515.8, 20013.3, 19546.2, 20181.7, 20166.5, 20031.6, 19487.1, 19716.3, 20157.0, 19714.6, 20152.9, 19855.1, 19749]}]}, {"name": "2차전지·신재생", "children": [{"code": "373220", "name": "LG에너지솔루션", "value": 1002000, "change": 1.7, "price": 386460, "prev_close": 380000, "spark": [376257.3, 386573.1, 386848.0, 373975.0, 379161.2, 379527.1, 378648.8, 378099.7, 381135.2, 387778.0, 386657.2, 384352.6, 383021.9, 381652.9, 381796.0, 377903.1, 384923.5, 387781.0, 390805.9, 390801.1, 385424.2, 378509.9, 381594.0, 385674.3, 382932.7, 384191.5, 383983.8, 385791.6, 387921.6, 386460]}, {"code": "247540", "name": "에코프로비엠", "value": 154000, "change": -2.06, "price": 190983, "prev_close": 195000, "spark": [193284.3, 192140.8, 195553.0, 196063.9, 190922.5, 197283.5, 192881.6, 192025.7, 195769.2, 196968.2, 196647.9, 189811.2, 195762.4, 191694.7, 191382.8, 192858.2, 194282.4, 189575.9, 195324.8, 189575.1, 195852.4, 191656.5, 194441.7, 190052.6, 191039.8, 192649.0, 189014.6, 189055.3, 193596.4, 190983]}, {"code": "086520", "name": "에코프로", "value": 121000, "change": 0.57, "price": 78445, "prev_close": 78000, "spark": [78814.6, 79167.9, 79038.3, 78094.3, 76991.6, 77484.4, 78113.7, 76964.5, 79225.3, 79328.6, 76675.6, 77205.0, 79229.0, 79257.1, 77429.0, 78093.7, 79557.4, 78903.1, 77567.1, 79306.8, 78323.1, 78747.2, 77157.5, 76880.0, 77968.2, 78678.8, 77387.3, 79576.8, 78702.3, 78445]}, {"code": "003670", "name": "포스코퓨처엠", "value": 82000, "change": 1.03, "price": 237420, "prev_close": 235000, "spark": [231804.0, 238829.4, 237530.8, 237043.4, 233292.2, 234339.6, 232299.0, 236270.0, 240082.5, 239142.1, 237233.8, 237605.2, 233808.1, 235225.2, 231610.1, 238913.5, 238876.0, 231754.5, 240410.0, 237984.9, 237629.3, 232084.3, 234484.2, 239816.5, 235155.2, 241521.4, 238525.2, 236529.5, 236163.4, 237420]}]}, {"name": "산업재", "children": [{"code": "028260", "name": "삼성물산", "value": 215000, "change": -2.66, "price": 136276, "prev_close": 140000, "spark": [138648.1, 139690.1, 140709.1, 141382.6, 138925.7, 137190.1, 139292.3, 139986.1, 140843.9, 138158.7, 139519.0, 139181.9, 137360.5, 136194.4, 135824.7, 140735.9, 138711.8, 139787.5, 136386.6, 138710.8, 139570.6, 136206.5, 135266.6, 138493.6, 139096.8, 138454.6, 138309.4, 137078.1, 137279.5, 136276]}, {"code": "329180", "name": "HD현대중공업", "value": 124000, "change": -1.59, "price": 241104, "prev_close": 245000, "spark": [247133.6, 246363.9, 249528.5, 242276.4, 243676.8, 243250.4, 239712.1, 246065.9, 244619.7, 240800.0, 245841.1, 240844.3, 243721.6, 246000.8, 247039.5, 244642.1, 242920.8, 246047.2, 245866.8, 246078.2, 239237.8, 238297.8, 238456.1, 239582.4, 244749.4, 244176.9, 238450.4, 243105.8, 239653.1, 241104]}, {"code": "012450", "name": "한화에어로스페이스", "value": 102000, "change": 0.72, "price": 216548, "prev_close": 215000, "spark": [213746.5, 217168.7, 213435.7, 217655.6, 213752.4, 213192.9, 213536.4, 218415.8, 215171.8, 218654.1, 216257.7, 219435.7, 211926.5, 219067.1, 215751.4, 218983.9, 214829.1, 214160.8, 212098.1, 219082.6, 212926.5, 213525.0, 215387.8, 216828.9, 219803.2, 215967.0, 214797.4, 218309.3, 218910.8, 216548]}, {"code": "011200", "name": "HMM", "value": 101000, "change": 0.5, "price": 18090, "prev_close": 18000, "spark": [18094.8, 17769.3, 18103.5, 17650.9, 17848.5, 18204.5, 17778.8, 18213.1, 18017.3, 18218.6, 17732.9, 18117.0, 18133.8, 17970.4, 18380.2, 17962.1, 17715.2, 17835.3, 17964.0, 17707.4, 17933.4, 18306.3, 17844.4, 18199.3, 18166.2, 17895.8, 18220.7, 17971.2, 17818.4, 18090]}, {"code": "034020", "name": "두산에너빌리티", "value": 99000, "change": -1.77, "price": 21611, "prev_close": 22000, "spark": [22077.1, 21699.1, 22253.5, 21785.7, 21765.9, 22130.2, 22003.1, 21766.2, 22228.4, 22307.9, 21730.2, 22199.7, 21717.6, 21556.5, 22199.8, 22160.5, 21702.0, 21537.4, 21955.1, 21426.5, 21934.2, 21796.0, 21418.9, 21576.2, 21808.3, 21264.8, 21976.8, 21426.8, 21654.5, 21611]}, {"code": "010140", "name": "삼성중공업", "value": 81000, "change": -1.57, "price": 10827, "prev_close": 11000, "spark": [11213.9, 11063.9, 11054.3, 10773.8, 11058.1, 10933.9, 10912.1, 10978.5, 10941.0, 10795.9, 11024.7, 10990.6, 10842.1, 10992.3, 10986.7, 10810.8, 10950.2, 10741.3, 11035.7, 10715.4, 10975.3, 10709.1, 10701.5, 10692.2, 10726.3, 10720.8, 10742.2, 10848.9, 10703.8, 10827]}, {"code": "042660", "name": "한화오션", "value": 78000, "change": -0.63, "price": 32792, "prev_close": 33000, "spark": [32731.5, 32388.6, 32980.8, 32595.0, 33539.3, 32741.9, 32304.6, 33174.8, 33476.2, 33375.1, 33149.9, 32460.8, 32376.2, 32922.1, 33192.8, 32369.4, 32565.0, 32525.4, 33511.8, 32596.1, 32809.7, 32324.4, 32415.5, 32230.9, 32553.1, 33216.3, 32567.8, 33119.2, 32267.9, 32792]}, {"code": "086280", "name": "현대글로비스", "value": 61000, "change": 1.51, "price": 96434, "prev_close": 95000, "spark": [93247.8, 96406.8, 95728.6, 93877.0, 94647.8, 95006.6, 95766.2, 96805.7, 93825.1, 96659.6, 94270.9, 95160.9, 97376.4, 94762.4, 95251.2, 97094.2, 96947.8, 96414.6, 97035.2, 94446.8, 96745.5, 94335.8, 97794.5, 94823.4, 95862.8, 96586.2, 97451.5, 97023.2, 95155.0, 96434]}, {"code": "003490", "name": "대한항공", "value": 42000, "change": 2.28, "price": 22502, "prev_close": 22000, "spark": [21873.1, 21593.6, 22201.0, 22357.0, 22495.7, 21754.4, 22482.6, 21773.1, 22058.9, 21747.4, 21958.8, 22023.5, 22392.1, 22385.4, 22483.3, 22328.8, 22335.7, 22724.6, 22464.6, 22183.5, 22367.1, 22544.2, 22016.6, 22543.8, 22189.2, 22294.0, 22608.8, 22363.8, 22789.9, 22502]}, {"code": "900082", "name": "신건설82", "value": 37021, "change": 2.64, "price": 113248, "prev_close": 110335, "spark": [108317.4, 111085.2, 108981.9, 112216.7, 112330.9, 112510.8, 109012.0, 111000.4, 109965.0, 113368.9, 109302.7, 110183.9, 112189.7, 111202.8, 110540.9, 111656.5, 113306.9, 111807.6, 113758.4, 112003.8, 110616.8, 112432.6, 113239.7, 110845.3, 112348.7, 113105.0, 110682.5, 111193.9, 113619.6, 113248]}, {"code": "900097", "name": "신건설97", "value": 33711, "change": 1.25, "price": 70798, "prev_close": 69924, "spark": [71028.7, 70130.6, 70422.0, 69890.4, 69593.8, 70995.9, 71001.3, 71110.0, 69689.2, 70952.5, 70508.4, 70869.0, 69898.5, 70181.3, 69205.9, 70826.1, 68996.4, 70026.1, 70845.0, 71345.9, 70661.8, 70199.8, 69472.2, 71741.1, 70625.8, 71588.9, 71394.4, 70480.6, 70072.0, 70798]}, {"code": "900045", "name": "신건설45", "value": 31290, "change": 2.3, "price": 46880, "prev_close": 45826, "spark": [46632.7, 45661.5, 45818.1, 46462.8, 46377.9, 45272.2, 45883.7, 46880.4, 46749.6, 46319.6, 46699.8, 46133.0, 46559.3, 47153.9, 45649.7, 46369.0, 46464.5, 45597.3, 47296.5, 47151.9, 46520.9, 46604.9, 47415.4, 46056.6, 46845.6, 47166.8, 46074.1, 46596.2, 47032.2, 46880]}, {"code": "900034", "name": "신건설34", "value": 28283, "change": -2.11, "price": 47023, "prev_close": 48037, "spark": [48753.9, 47848.6, 48171.7, 48293.8, 47423.2, 47669.7, 47531.3, 47404.8, 48330.3, 47041.5, 47879.9, 48379.0, 47640.3, 48227.5, 47637.2, 47162.3, 47922.8, 47543.2, 46875.8, 46826.5, 47740.8, 47653.6, 48059.9, 46541.8, 47593.5, 48056.6, 46521.8, 47172.8, 47315.4, 47023]}, {"code": "900020", "name": "신건설20", "value": 27541, "change": -2.98, "price": 62925, "prev_close": 64858, "spark": [64485.8, 64741.7, 64902.3, 65078.6, 64383.5, 65148.4, 65317.2, 63852.4, 65198.7, 65033.9, 64248.5, 62929.8, 63165.3, 64419.9, 63169.4, 64487.8, 62938.0, 63187.7, 63030.3, 64445.7, 64004.5, 62942.5, 64029.8, 62147.7, 64048.6, 62191.0, 64051.3, 63661.1, 63910.0, 62925]}, {"code": "900084", "name": "신건설84", "value": 25153, "change": 2.82, "price": 53243, "prev_close": 51783, "spark": [51546.1, 51856.3, 52515.6, 52351.5, 52395.0, 51069.7, 51832.7, 51957.5, 52799.2, 52630.2, 53278.4, 51386.3, 52905.9, 51805.0, 53273.2, 53305.7, 52467.1, 52054.2, 52974.0, 53185.7, 52508.1, 53028.4, 53398.4, 52294.4, 53470.2, 52388.8, 52982.9, 54171.9, 52286.4, 53243]}, {"code": "900056", "name": "신건설56", "value": 19373, "change": -1.01, "price": 62536, "prev_close": 63174, "spark": [63208.7, 62844.9, 62951.2, 63249.6, 62160.7, 63274.1, 62429.2, 62596.2, 63522.6, 62112.6, 62087.8, 62488.4, 61786.5, 63969.6, 63155.2, 63249.0, 62798.4, 62981.8, 62423.0, 63466.5, 62278.4, 62011.5, 61899.2, 61587.8, 62658.9, 62413.7, 62694.6, 61559.3, 61860.6, 62536]}, {"code": "900048", "name": "신건설48", "value": 18934, "change": -2.07, "price": 35989, "prev_close": 36750, "spark": [36506.5, 36426.3, 37345.5, 36841.3, 36608.6, 36706.9, 36955.3, 36781.0, 35985.2, 36292.0, 36113.6, 36666.0, 37037.5, 36039.9, 35720.1, 36911.4, 36159.2, 36730.2, 35721.0, 35900.9, 36547.5, 35514.6, 36196.9, 36535.8, 36140.8, 36106.5, 36048.7, 35748.4, 36233.4, 35989]}, {"code": "900033", "name": "신건설33", "value": 15659, "change": 0.5, "price": 20498, "prev_close": 20396, "spark": [20763.5, 20126.8, 20777.2, 20437.7, 20006.1, 20057.3, 20556.8, 20645.0, 20723.4, 20365.5, 20106.4, 20465.7, 20604.5, 20832.2, 20670.9, 20568.9, 20812.8, 20658.2, 20175.4, 20429.4, 20328.4, 20131.7, 20107.9, 20718.1, 20528.0, 20545.4, 20264.1, 20293.1, 20402.7, 20498]}, {"code": "900079", "name": "신건설79", "value": 15587, "change": -0.6, "price": 43118, "prev_close": 43378, "spark": [43061.6, 43178.7, 42702.0, 42499.2, 43722.3, 42580.1, 43748.6, 42531.6, 43907.1, 43052.1, 43293.4, 42917.1, 43591.2, 43445.4, 42875.8, 43979.6, 43030.1, 43781.3, 42407.5, 42615.0, 42715.6, 43615.4, 43692.7, 43774.6, 42809.3, 43385.1, 42796.6, 43803.4, 43929.6, 43118]}, {"code": "900070", "name": "신건설70", "value": 12310, "change": 1.77, "price": 58480, "prev_close": 57463, "spark": [57166.1, 58549.4, 57658.3, 57696.9, 56721.9, 56480.4, 57899.4, 57795.3, 58789.1, 57321.7, 58394.4, 58792.7, 57518.5, 57714.5, 58295.3, 58018.4, 57231.0, 57406.0, 58877.2, 57414.2, 57419.0, 58900.4, 59058.5, 59091.5, 59316.0, 59496.0, 58284.2, 58526.0, 57955.2, 58480]}, {"code": "900108", "name": "신건설108", "value": 9643, "change": -1.12, "price": 11307, "prev_close": 11435, "spark": [11298.2, 11467.1, 11630.5, 11357.2, 11494.9, 11292.9, 11311.4, 11209.6, 11261.1, 11388.9, 11313.3, 11458.6, 11469.6, 11220.4, 11403.5, 11508.0, 11571.9, 11210.1, 11271.1, 11480.4, 11442.7, 11406.0, 11236.9, 11269.9, 11410.3, 11248.5, 11311.2, 11291.1, 11435.7, 11307]}, {"code": "900043", "name": "신건설43", "value": 8665, "change": -2.38, "price": 11843, "prev_close": 12132, "spark": [11978.1, 12172.3, 12273.7, 12271.8, 11921.4, 12100.2, 11959.8, 12245.1, 11851.4, 11841.0, 11804.1, 12025.6, 11790.2, 12041.1, 11947.4, 12025.0, 12164.9, 11986.9, 11973.1, 12178.8, 11919.4, 12053.0, 11849.1, 11771.7, 12021.7, 11993.3, 11773.9, 11846.2, 11857.9, 11843]}, {"code": "900101", "name": "신건설101", "value": 6378, "change": 1.32, "price": 38410, "prev_close": 37910, "spark": [37157.7, 37525.7, 38657.0, 38701.7, 38261.6, 38391.0, 37460.6, 37506.8, 38149.6, 38166.0, 38654.0, 37555.8, 38473.1, 38808.7, 37445.1, 38570.2, 37773.5, 37840.9, 37811.5, 38496.5, 38282.2, 38719.8, 38117.3, 38948.5, 38909.9, 37634.1, 38586.4, 37765.9, 39112.5, 38410]}]}, {"name": "소재", "children": [{"code": "005490", "name": "POSCO홀딩스", "value": 384000, "change": 0.33, "price": 381254, "prev_close": 380000, "spark": [376545.8, 383732.4, 381285.6, 381199.7, 378292.0, 378363.6, 381596.6, 386375.7, 373907.9, 376600.8, 387640.8, 376249.8, 379083.0, 385400.0, 378242.1, 385111.7, 386596.3, 373210.6, 386604.4, 379905.0, 376747.1, 381129.8, 377608.6, 375660.7, 375812.4, 382636.9, 385957.9, 383624.5, 379908.6, 381254]}, {"code": "051910", "name": "LG화학", "value": 281000, "change": 2.81, "price": 390678, "prev_close": 380000, "spark": [373957.6, 383106.5, 380408.6, 382523.4, 383774.1, 380448.6, 378203.5, 376762.4, 384388.8, 377605.7, 383879.6, 390157.3, 378900.0, 379572.6, 391756.5, 385783.1, 384413.9, 393592.4, 388778.4, 392910.9, 390926.7, 392753.4, 395089.8, 384039.9, 390501.7, 388758.4, 389286.9, 385556.1, 388915.3, 390678]}, {"code": "010130", "name": "고려아연", "value": 102000, "change": -0.48, "price": 577216, "prev_close": 580000, "spark": [581908.2, 586080.0, 582652.8, 579961.5, 571944.1, 583805.0, 589175.5, 581556.8, 569277.2, 576324.1, 570548.3, 567782.1, 579372.4, 588203.1, 582912.8, 586098.8, 580900.1, 570920.1, 587544.6, 580480.6, 586801.8, 578709.7, 583715.2, 568399.3, 581376.2, 586881.3, 578411.1, 565891.4, 587418.7, 577216]}, {"code": "900062", "name": "신화학62", "value": 44086, "change": 1.72, "price": 88046, "prev_close": 86557, "spark": [86634.9, 86152.0, 85052.0, 86816.2, 85809.9, 87878.6, 87885.0, 86498.3, 87281.5, 87869.4, 87991.7, 87814.7, 85756.5, 85935.2, 87195.4, 86385.2, 88643.1, 86666.7, 88808.2, 87210.9, 86488.7, 88371.9, 88705.9, 88012.6, 86443.4, 86105.1, 88436.3, 88604.6, 87346.3, 88046]}, {"code": "900064", "name": "신화학64", "value": 44052, "change": 2.23, "price": 51408, "prev_close": 50287, "spark": [50134.6, 50500.8, 49873.1, 50476.9, 50574.3, 50710.0, 51529.9, 50346.4, 49986.7, 50741.8, 50791.7, 50051.3, 50872.1, 50755.9, 51832.5, 51026.3, 51469.1, 50734.5, 50238.4, 51769.5, 50276.7, 50543.0, 51719.5, 52099.8, 50392.7, 51270.5, 51880.3, 51949.3, 51603.8, 51408]}, {"code": "011170", "name": "롯데케미칼", "value": 38000, "change": -2.05, "price": 78360, "prev_close": 80000, "spark": [78596.0, 79595.9, 80312.8, 80784.4, 80787.0, 79628.4, 79974.9, 78313.2, 78805.0, 79086.2, 79776.2, 80081.6, 80671.3, 78953.4, 79697.8, 78482.4, 80548.1, 77651.5, 79839.7, 77907.7, 78851.3, 77278.8, 79854.7, 80049.5, 78699.7, 77629.4, 79419.7, 78506.2, 79038.6, 78360]}, {"code": "078930", "name": "GS", "value": 33000, "change": 2.0, "price": 42840, "prev_close": 42000, "spark": [42298.2, 41788.6, 42323.6, 42902.0, 41407.9, 41760.9, 42001.5, 42493.5, 42069.7, 41747.1, 41459.2, 42667.5, 43065.9, 42461.5, 42793.0, 42535.8, 42605.6, 42231.0, 43062.0, 42081.3, 43372.8, 42530.8, 42472.7, 41817.4, 42138.3, 42734.8, 42853.6, 42787.5, 42536.8, 42840]}, {"code": "900119", "name": "신화학119", "value": 31941, "change": 1.06, "price": 98308, "prev_close": 97277, "spark": [99072.8, 98791.4, 98579.4, 97678.0, 98182.7, 99287.3, 97738.6, 98587.4, 98573.8, 99410.6, 97470.6, 97513.5, 98045.0, 95880.5, 96265.7, 96109.7, 98371.4, 99824.7, 98612.6, 96890.4, 97263.4, 99814.5, 98124.0, 96166.7, 99436.4, 97175.8, 96600.9, 98919.9, 99535.0, 98308]}, {"code": "900118", "name": "신화학118", "value": 28219, "change": 2.64, "price": 78046, "prev_close": 76039, "spark": [75034.9, 75526.7, 75298.4, 76476.4, 75325.2, 77153.1, 77797.1, 75555.9, 77332.6, 75833.9, 75925.5, 76067.6, 76023.9, 77984.1, 78057.7, 76627.4, 78016.9, 76028.7, 75968.7, 78776.7, 77400.1, 75952.0, 78676.2, 79060.5, 78786.3, 77367.0, 77262.1, 79150.4, 79166.2, 78046]}, {"code": "900015", "name": "신화학15", "value": 27298, "change": 2.43, "price": 33806, "prev_close": 33004, "spark": [32991.6, 33686.7, 33621.9, 32789.8, 32738.8, 33245.9, 32567.0, 33602.3, 33195.9, 33308.0, 33283.9, 33164.5, 33587.8, 32923.8, 34035.5, 33686.9, 33392.5, 33730.0, 32841.7, 33138.3, 33666.6, 33348.7, 33764.9, 33315.1, 33733.4, 33339.9, 33684.3, 33903.6, 33597.0, 33806]}, {"code": "900122", "name": "신화학122", "value": 27236, "change": -1.19, "price": 28454, "prev_close": 28797, "spark": [28704.6, 29071.9, 28619.5, 28648.1, 28693.3, 28818.9, 29271.3, 28925.7, 29059.7, 28941.7, 29024.6, 28729.7, 29060.4, 28297.1, 28972.7, 28890.9, 28576.9, 28037.8, 28494.7, 28156.1, 29008.0, 28697.2, 28575.4, 28315.2, 28497.9, 28217.8, 28897.5, 27962.9, 28009.4, 28454]}, {"code": "900094", "name": "신화학94", "value": 18880, "change": -0.69, "price": 28919, "prev_close": 29120, "spark": [29482.9, 29085.9, 29256.3, 29041.1, 28901.0, 28924.5, 29148.2, 29571.0, 28784.2, 28502.1, 28612.5, 29468.7, 29572.5, 28681.6, 29110.7, 29188.5, 28632.6, 29326.4, 28827.6, 29188.6, 28966.9, 29248.0, 29418.2, 28823.0, 28706.7, 29099.1, 28529.0, 28548.3, 29281.9, 28919]}, {"code": "900019", "name": "신화학19", "value": 11338, "change": -1.34, "price": 55616, "prev_close": 56371, "spark": [56621.2, 56133.5, 57224.9, 55356.9, 55919.3, 55826.2, 56555.5, 56657.2, 56397.4, 55904.4, 56973.4, 56709.9, 57034.9, 56584.2, 56053.3, 55870.1, 55214.5, 56716.6, 55068.4, 55286.1, 55297.9, 56366.9, 56353.9, 55128.4, 55517.2, 54820.4, 56665.9, 55608.4, 54649.5, 55616]}, {"code": "900024", "name": "신화학24", "value": 10164, "change": 1.45, "price": 50054, "prev_close": 49339, "spark": [49869.2, 48528.9, 48912.3, 48722.4, 49747.3, 50233.7, 49104.9, 49005.5, 49103.8, 49813.8, 48847.0, 50287.7, 48690.7, 49986.7, 50405.5, 49358.7, 49685.6, 50709.0, 49863.9, 49351.6, 49721.5, 50796.7, 50277.0, 49259.4, 50126.0, 50217.7, 50252.0, 50132.8, 50076.3, 50054]}, {"code": "900138", "name": "신화학138", "value": 5141, "change": 0.8, "price": 25495, "prev_close": 25293, "spark": [25709.7, 25280.9, 25028.3, 24895.0, 25124.6, 25238.0, 24983.4, 24842.4, 25372.3, 25618.9, 24991.5, 25151.9, 25412.2, 25574.9, 25382.1, 25657.8, 25199.9, 25682.4, 25722.1, 25524.2, 25734.8, 25488.3, 25128.6, 25842.9, 25396.0, 25212.0, 25693.3, 25629.9, 25823.0, 25495]}]}, {"name": "에너지", "children": [{"code": "096770", "name": "SK이노베이션", "value": 91000, "change": 1.3, "price": 106365, "prev_close": 105000, "spark": [103209.7, 105580.3, 105164.8, 106417.4, 105670.0, 106060.4, 104311.8, 105961.1, 105512.5, 104440.1, 104143.3, 103681.7, 104018.8, 103954.1, 105469.0, 105505.1, 106606.0, 105766.1, 105084.2, 104414.3, 107939.8, 103955.3, 108045.1, 105155.6, 104534.3, 105914.7, 104131.4, 104527.3, 104253.3, 106365]}, {"code": "010950", "name": "S-Oil", "value": 52000, "change": 2.99, "price": 66944, "prev_close": 65000, "spark": [64786.9, 65832.6, 65130.2, 64857.2, 65795.9, 64081.7, 64278.5, 66140.6, 64588.9, 64978.4, 65382.6, 65853.3, 64952.1, 66931.3, 65269.5, 65688.6, 64767.7, 67410.6, 66781.7, 65965.3, 67612.7, 65730.8, 67799.1, 65736.4, 67239.0, 65588.7, 67187.5, 66029.3, 66580.1, 66944]}, {"code": "900077", "name": "신정유77", "value": 44909, "change": -1.33, "price": 71382, "prev_close": 72344, "spark": [71369.4, 72962.7, 72976.6, 72386.2, 71132.6, 72124.7, 71570.7, 71713.4, 70799.8, 72521.5, 73363.7, 71225.3, 71758.0, 70528.2, 72720.2, 72088.3, 71515.8, 71046.6, 73085.6, 71945.3, 72225.3, 72185.4, 70629.2, 72354.3, 70830.4, 71514.5, 72012.5, 70987.0, 72756.2, 71382]}, {"code": "900093", "name": "신정유93", "value": 44753, "change": 0.07, "price": 37898, "prev_close": 37871, "spark": [37204.1, 38091.6, 38178.5, 38316.1, 37307.9, 37470.8, 38607.2, 38315.3, 38267.9, 38342.9, 37787.7, 37416.1, 38169.3, 37668.4, 37330.6, 38489.5, 37863.8, 37792.3, 37576.7, 38187.6, 37419.5, 37415.6, 37660.7, 38244.8, 37552.8, 38396.6, 38523.6, 37978.8, 37243.5, 37898]}, {"code": "900080", "name": "신정유80", "value": 39757, "change": 2.89, "price": 70741, "prev_close": 68754, "spark": [69657.8, 68940.3, 68761.1, 69740.3, 69044.9, 69757.8, 70248.7, 69572.4, 68917.5, 69710.8, 68931.8, 68272.1, 70898.1, 70547.5, 68835.7, 70300.2, 70602.2, 68940.1, 69373.6, 69800.6, 69620.7, 69050.4, 70711.0, 69039.0, 71637.2, 69557.6, 69209.1, 69492.1, 69799.9, 70741]}, {"code": "900098", "name": "신정유98", "value": 34588, "change": -2.99, "price": 110703, "prev_close": 114115, "spark": [115604.2, 114696.7, 113994.1, 114653.5, 112563.7, 112935.0, 113878.3, 111391.2, 115078.8, 111766.4, 112900.4, 114546.8, 110843.2, 113918.5, 110522.6, 112607.1, 114173.1, 111742.7, 111417.4, 112802.5, 113195.0, 110607.3, 109492.6, 109506.6, 110422.9, 113142.4, 113095.5, 109154.3, 111817.7, 110703]}, {"code": "900125", "name": "신정유125", "value": 34400, "change": -1.28, "price": 54130, "prev_close": 54832, "spark": [54167.4, 55147.3, 54935.1, 55728.2, 54861.5, 54836.7, 55219.5, 55239.0, 54804.0, 54991.8, 55028.4, 54407.7, 53684.2, 55150.5, 54601.2, 54479.0, 54785.7, 54493.8, 54612.6, 55310.7, 55219.3, 54432.0, 55375.2, 55021.9, 54061.2, 54515.3, 54908.8, 53796.1, 53592.8, 54130]}, {"code": "900011", "name": "신정유11", "value": 32493, "change": -1.78, "price": 77751, "prev_close": 79160, "spark": [79986.4, 80436.8, 78298.1, 80450.0, 78802.4, 78597.1, 79572.4, 80321.9, 79069.2, 78777.5, 80208.7, 78009.3, 77956.0, 77663.5, 79586.1, 76943.7, 79383.9, 78924.1, 77588.7, 78403.8, 78363.5, 79464.3, 77017.3, 76604.9, 77545.0, 76820.8, 77483.4, 78103.7, 76969.2, 77751]}, {"code": "900025", "name": "신정유25", "value": 24213, "change": 0.31, "price": 21088, "prev_close": 21023, "spark": [21082.3, 21083.3, 20789.0, 20672.9, 20883.9, 21019.3, 21026.4, 21375.1, 21211.9, 21312.6, 20704.0, 21167.5, 20659.6, 21312.1, 20954.4, 21292.8, 21414.6, 20921.3, 21383.6, 21010.1, 21430.7, 20749.9, 21300.3, 21283.4, 21371.6, 21440.6, 21194.2, 21195.0, 20709.7, 21088]}, {"code": "900069", "name": "신정유69", "value": 22486, "change": -1.17, "price": 35506, "prev_close": 35926, "spark": [35983.0, 35414.2, 35900.8, 35486.3, 35230.0, 36182.8, 35687.2, 35747.6, 35945.5, 35802.6, 35386.7, 35468.3, 35602.3, 35215.5, 35130.5, 35810.4, 35054.3, 35536.8, 35076.2, 35653.5, 36025.3, 35097.0, 35088.9, 35677.2, 35561.2, 35780.2, 35117.9, 35699.7, 35855.2, 35506]}, {"code": "900053", "name": "신정유53", "value": 22219, "change": 2.29, "price": 20146, "prev_close": 19695, "spark": [19506.6, 19654.2, 19875.0, 19802.9, 19445.0, 19703.1, 19679.7, 19554.4, 19694.1, 19960.2, 20067.8, 19599.5, 19760.5, 20156.3, 20156.7, 20027.5, 19895.8, 20301.2, 19760.2, 20139.8, 19728.8, 20205.7, 19703.4, 20245.8, 19861.2, 20181.3, 19815.4, 20382.8, 19959.4, 20146]}, {"code": "900109", "name": "신정유109", "value": 20597, "change": 2.09, "price": 69124, "prev_close": 67709, "spark": [66634.1, 67619.6, 66486.9, 67050.7, 68009.2, 67133.9, 68066.0, 67383.2, 68052.3, 68783.8, 67205.2, 68795.2, 66962.8, 68572.8, 68844.2, 67178.6, 67578.1, 67941.2, 69386.8, 68962.2, 67449.1, 69161.5, 67423.0, 68523.3, 68247.7, 69902.3, 69420.3, 70033.6, 67745.5, 69124]}, {"code": "900042", "name": "신정유42", "value": 19392, "change": -1.5, "price": 56696, "prev_close": 57559, "spark": [57302.0, 58617.7, 57519.2, 57945.6, 58356.2, 57375.7, 57601.0, 56416.7, 56638.3, 58350.1, 57399.3, 57713.7, 56158.4, 58130.0, 56700.2, 57090.0, 57637.3, 55961.0, 57441.5, 56665.7, 56515.7, 58059.0, 57989.8, 56366.4, 55851.6, 56265.5, 56529.4, 57889.4, 57837.8, 56696]}, {"code": "900095", "name": "신정유95", "value": 18182, "change": 0.46, "price": 77556, "prev_close": 77201, "spark": [76519.0, 76132.6, 78457.5, 77724.5, 75971.1, 76896.7, 78703.3, 77635.4, 77688.2, 76465.5, 76517.9, 76258.3, 78807.5, 78631.2, 76842.7, 77515.6, 76487.1, 76287.8, 77549.6, 78364.5, 78570.6, 76865.5, 78106.7, 77556.4, 76363.2, 79044.8, 78995.2, 76430.7, 78887.1, 77556]}, {"code": "900010", "name": "신정유10", "value": 18031, "change": 1.31, "price": 36276, "prev_close": 35807, "spark": [35179.8, 35870.9, 36157.7, 35397.1, 36364.3, 35373.4, 35221.2, 35657.1, 36622.5, 36621.7, 35683.3, 36341.2, 36467.8, 36215.8, 36379.2, 35544.5, 35612.9, 35547.3, 35410.6, 36819.4, 36300.1, 36299.8, 36325.8, 36318.8, 35804.7, 35523.6, 35617.3, 36649.7, 35728.9, 36276]}, {"code": "900074", "name": "신정유74", "value": 16708, "change": -1.03, "price": 45249, "prev_close": 45720, "spark": [46103.7, 45475.5, 46324.8, 45655.7, 44998.9, 45083.5, 44775.8, 46085.1, 44712.2, 45157.2, 45400.1, 45980.0, 46408.8, 45975.4, 44707.3, 46249.4, 46339.1, 46108.4, 45409.4, 45094.5, 45318.3, 44920.6, 45190.5, 44517.2, 45756.1, 45097.4, 44959.1, 45483.3, 45704.1, 45249]}, {"code": "900112", "name": "신정유112", "value": 13671, "change": -1.14, "price": 48858, "prev_close": 49421, "spark": [49697.7, 49800.9, 48480.7, 48599.6, 49259.5, 50062.5, 50043.1, 48788.5, 49340.0, 50192.1, 48326.7, 48987.6, 49706.5, 50072.9, 48543.3, 49011.9, 49861.8, 49626.0, 48653.3, 48400.5, 48631.1, 49832.3, 49365.2, 49763.5, 48884.0, 49221.2, 48115.9, 48898.1, 48251.6, 48858]}, {"code": "900089", "name": "신정유89", "value": 13241, "change": -0.39, "price": 73323, "prev_close": 73610, "spark": [74185.3, 72530.6, 73336.8, 73436.3, 72628.7, 73825.5, 74174.3, 72666.6, 73398.0, 72788.0, 74073.4, 74695.4, 74360.9, 74121.9, 72367.4, 72330.0, 73303.3, 73039.8, 73501.7, 73082.0, 74265.8, 73436.4, 74711.4, 73026.6, 73022.3, 74149.4, 74561.8, 73534.9, 73800.8, 73323]}, {"code": "900023", "name": "신정유23", "value": 13180, "change": -1.43, "price": 70909, "prev_close": 71938, "spark": [70929.7, 72665.7, 70594.1, 71286.9, 72448.6, 73067.8, 71125.8, 70783.7, 72784.3, 72924.4, 70174.8, 72300.3, 70128.5, 71469.8, 71437.2, 72277.7, 71676.4, 71316.1, 70496.2, 71716.0, 71097.0, 71027.9, 71444.4, 69722.3, 72170.3, 70421.5, 71380.3, 71887.9, 70115.2, 70909]}, {"code": "900075", "name": "신정유75", "value": 11973, "change": 2.19, "price": 19016, "prev_close": 18608, "spark": [18725.1, 18270.1, 18905.7, 18777.7, 18921.8, 18525.4, 19012.6, 18363.8, 18657.7, 18490.2, 18879.9, 18847.6, 18922.8, 18863.4, 19023.7, 18573.9, 18799.3, 18907.4, 19189.6, 18566.0, 18736.9, 18803.6, 18825.5, 18602.8, 18890.5, 18998.2, 18816.3, 18709.9, 19150.0, 19016]}, {"code": "900130", "name": "신정유130", "value": 11416, "change": -0.35, "price": 49367, "prev_close": 49540, "spark": [49370.1, 48961.4, 48953.9, 48650.0, 49657.4, 50457.1, 49561.7, 48684.3, 49935.0, 49693.5, 50049.7, 49883.0, 49324.6, 50149.5, 48982.1, 49599.1, 49688.1, 50282.1, 49658.5, 49419.7, 49873.4, 49410.4, 50017.0, 50160.5, 48869.1, 48977.2, 48779.8, 48625.0, 49303.6, 49367]}, {"code": "900004", "name": "신정유4", "value": 10697, "change": -2.19, "price": 61943, "prev_close": 63330, "spark": [64192.3, 64024.3, 64470.6, 62973.5, 62726.8, 63240.5, 63383.7, 61784.3, 62207.0, 62358.4, 63570.7, 62327.6, 62772.6, 62271.9, 61436.7, 63073.0, 62171.7, 63072.9, 62756.5, 61254.5, 61569.7, 61905.7, 61876.2, 62657.3, 63213.3, 62870.8, 62447.4, 61992.8, 62306.0, 61943]}, {"code": "900132", "name": "신정유132", "value": 5967, "change": -0.16, "price": 40126, "prev_close": 40190, "spark": [40825.8, 40127.9, 40690.1, 40870.3, 39468.8, 40213.0, 40281.2, 40460.8, 40261.1, 39397.9, 40292.4, 39895.8, 40831.7, 40636.2, 39463.0, 39594.2, 40701.7, 39894.4, 39950.1, 40203.2, 39609.8, 40313.4, 39639.8, 39524.3, 40590.3, 39827.2, 40707.0, 40467.2, 39761.5, 40126]}]}, {"name": "필수소비재", "children": [{"code": "033780", "name": "KT&G", "value": 131000, "change": 0.57, "price": 90513, "prev_close": 90000, "spark": [91365.1, 89552.8, 91228.2, 89338.5, 90161.6, 88911.8, 89650.7, 88449.0, 89063.0, 88684.2, 90198.6, 91277.2, 91678.4, 88977.5, 89668.8, 90205.5, 91636.7, 89614.1, 89693.3, 91311.8, 88899.3, 92117.6, 90447.6, 92190.8, 89357.2, 88764.3, 90052.9, 91798.4, 89104.4, 90513]}, {"code": "097950", "name": "CJ제일제당", "value": 42000, "change": 2.6, "price": 292410, "prev_close": 285000, "spark": [279666.8, 289327.3, 289860.6, 283816.6, 290574.1, 281635.3, 289646.5, 289660.7, 281458.9, 290323.1, 289179.2, 284416.9, 284563.8, 285825.3, 288954.8, 292023.4, 291089.8, 286684.7, 285593.2, 285345.4, 295470.8, 291063.3, 285970.6, 291374.3, 291709.8, 288710.1, 296828.2, 295454.7, 293021.0, 292410]}, {"code": "900091", "name": "신식품91", "value": 41031, "change": -1.12, "price": 70019, "prev_close": 70812, "spark": [71129.3, 70333.1, 70599.6, 69694.0, 70620.7, 71166.9, 69544.3, 69371.0, 70387.4, 69666.9, 70807.8, 70771.1, 71425.5, 71014.9, 70755.0, 69876.6, 71263.6, 70943.5, 70798.4, 70386.3, 71591.8, 70954.1, 70114.4, 69151.8, 71032.0, 71303.8, 70012.2, 69949.3, 70563.0, 70019]}, {"code": "900065", "name": "신식품65", "value": 39676, "change": 2.15, "price": 92956, "prev_close": 91000, "spark": [90890.0, 92730.7, 89809.7, 92673.2, 90369.8, 90829.1, 90226.9, 93023.3, 90908.4, 92948.2, 91022.6, 91695.2, 90193.0, 90437.2, 91864.6, 93297.1, 91269.3, 91583.5, 92491.6, 92310.9, 91998.1, 93213.0, 91022.4, 92760.0, 91023.3, 91950.4, 92608.5, 93157.7, 91916.5, 92956]}, {"code": "900135", "name": "신식품135", "value": 36546, "change": -1.98, "price": 49836, "prev_close": 50843, "spark": [51787.4, 50576.4, 50455.7, 51364.3, 50885.2, 51235.9, 50505.5, 51172.5, 50653.7, 50004.3, 50819.7, 49619.4, 51285.0, 50539.3, 50330.0, 50505.7, 50213.3, 50362.4, 50859.8, 49537.6, 51057.2, 49255.7, 49299.0, 50670.4, 50550.5, 49733.5, 49928.8, 50224.7, 49054.5, 49836]}, {"code": "900115", "name": "신식품115", "value": 31677, "change": -1.23, "price": 144496, "prev_close": 146295, "spark": [146762.3, 147707.2, 147962.2, 147595.2, 146977.1, 145713.4, 144718.1, 146529.1, 145493.6, 144035.8, 147856.4, 144455.4, 147252.1, 146526.6, 147845.6, 147888.6, 146561.4, 147639.9, 148012.3, 145594.6, 145698.8, 145052.6, 146939.6, 146905.7, 142277.1, 147062.4, 147386.5, 141735.1, 144905.0, 144496]}, {"code": "271560", "name": "오리온", "value": 31000, "change": 0.67, "price": 78523, "prev_close": 78000, "spark": [76774.5, 77334.4, 76563.9, 77840.0, 78355.7, 78483.8, 78773.7, 77831.4, 77941.0, 77255.5, 77154.8, 77065.0, 78390.7, 79313.0, 77813.9, 78010.8, 77624.3, 79477.5, 77148.7, 76808.8, 78826.9, 77260.7, 79605.8, 78910.9, 79924.8, 77306.9, 77329.5, 79447.9, 79636.2, 78523]}, {"code": "900049", "name": "신식품49", "value": 30928, "change": 2.58, "price": 124272, "prev_close": 121146, "spark": [121665.5, 120884.9, 119770.3, 121516.6, 121836.3, 121437.0, 121073.8, 120339.0, 122528.5, 122503.9, 123948.1, 121023.4, 122448.4, 122104.3, 122884.8, 122101.8, 125248.1, 123317.4, 124104.9, 121271.3, 123210.2, 124356.7, 121738.4, 124775.1, 126136.9, 126245.1, 125334.9, 123882.1, 122067.7, 124272]}, {"code": "900040", "name": "신식품40", "value": 29867, "change": 2.39, "price": 21293, "prev_close": 20796, "spark": [20579.0, 20924.4, 20969.7, 20991.1, 21021.3, 20915.1, 20966.6, 21012.2, 21276.8, 20980.1, 20550.7, 20945.4, 21347.5, 21081.8, 20892.4, 20927.8, 21477.1, 20912.4, 20821.3, 21287.7, 21221.9, 20989.0, 21415.8, 20986.1, 21317.4, 21291.0, 21303.6, 21391.9, 21098.5, 21293]}, {"code": "900128", "name": "신식품128", "value": 21371, "change": 0.93, "price": 16945, "prev_close": 16789, "spark": [16644.4, 16511.3, 16803.4, 17043.2, 16659.8, 16566.7, 16672.7, 17069.1, 16502.7, 16574.0, 16622.2, 16910.3, 16617.0, 16822.7, 17072.9, 16707.8, 17011.1, 16870.2, 17088.7, 17136.5, 16790.0, 16620.2, 16666.7, 17206.8, 16683.7, 16920.7, 17263.4, 17117.5, 16762.0, 16945]}, {"code": "900114", "name": "신식품114", "value": 20925, "change": -0.59, "price": 56449, "prev_close": 56784, "spark": [56032.8, 56948.0, 57532.8, 55743.1, 56205.8, 57447.8, 55704.3, 56621.9, 56637.9, 56626.5, 57680.6, 57610.8, 56044.0, 57048.2, 56374.1, 56074.8, 56667.9, 56440.3, 56099.2, 57235.8, 56286.5, 56125.3, 56598.2, 57547.7, 55597.6, 56565.9, 56153.6, 57249.4, 56710.0, 56449]}, {"code": "900111", "name": "신식품111", "value": 19040, "change": -1.2, "price": 32470, "prev_close": 32864, "spark": [32650.0, 32548.3, 32315.4, 33024.0, 32668.6, 33151.1, 33106.3, 33073.5, 32870.8, 32345.8, 32517.2, 32961.9, 32285.5, 32749.4, 32898.4, 33091.2, 32012.9, 32110.7, 32105.1, 32535.8, 32228.0, 32297.3, 32166.6, 31933.0, 32008.0, 33093.9, 32714.2, 32932.9, 33068.7, 32470]}, {"code": "282330", "name": "BGF리테일", "value": 18000, "change": -2.95, "price": 140722, "prev_close": 145000, "spark": [146170.7, 142712.9, 146710.8, 142473.8, 145289.8, 146513.0, 144486.4, 146596.6, 146048.5, 144773.3, 142136.0, 143191.0, 145684.7, 143863.2, 145313.8, 141528.3, 142228.5, 144762.6, 143863.6, 141203.0, 140146.7, 139504.1, 143314.3, 140947.3, 140517.5, 138835.6, 143729.0, 139692.3, 140535.0, 140722]}, {"code": "900050", "name": "신식품50", "value": 14363, "change": 2.19, "price": 77516, "prev_close": 75855, "spark": [74926.7, 75579.2, 76420.4, 74812.5, 76209.9, 75928.0, 76551.8, 75034.9, 76131.9, 75623.1, 74985.4, 75152.9, 77247.7, 77459.1, 75164.6, 76706.9, 77245.3, 75281.0, 75452.9, 76603.6, 75920.2, 76530.1, 76778.1, 75633.5, 77873.3, 78127.1, 77276.4, 77103.5, 78164.9, 77516]}, {"code": "900058", "name": "신식품58", "value": 10957, "change": 1.81, "price": 19949, "prev_close": 19594, "spark": [19626.4, 19210.2, 19981.2, 19884.8, 19629.0, 19709.1, 20014.9, 19567.4, 19837.3, 19625.1, 19822.2, 20095.0, 19414.5, 19781.0, 20133.4, 19443.0, 19757.8, 20014.9, 19932.4, 19568.7, 19471.3, 19758.7, 19616.8, 20031.9, 20204.2, 20004.3, 19800.0, 19593.3, 20042.7, 19949]}, {"code": "900088", "name": "신식품88", "value": 9535, "change": -2.35, "price": 13838, "prev_close": 14171, "spark": [13914.0, 13896.8, 14422.8, 13991.8, 14063.5, 14275.6, 14181.5, 14090.5, 14336.5, 14240.2, 14314.4, 13777.0, 13944.3, 13931.9, 14132.6, 13946.5, 13827.7, 14061.0, 13977.1, 14196.4, 14146.3, 13950.1, 14051.8, 13759.1, 13658.5, 14014.3, 13866.3, 13594.8, 14074.9, 13838]}, {"code": "900120", "name": "신식품120", "value": 8550, "change": 2.42, "price": 21410, "prev_close": 20904, "spark": [21076.5, 20605.2, 20658.3, 20571.0, 20808.9, 21242.9, 20971.3, 20744.2, 21121.6, 21333.3, 20741.4, 21093.6, 21369.7, 20891.6, 21409.1, 21102.6, 21450.0, 21613.6, 21370.9, 21085.0, 21660.5, 21335.5, 20977.3, 21593.5, 21573.8, 21566.5, 21437.4, 21234.2, 21067.8, 21410]}]}, {"name": "유틸리티", "children": [{"code": "015760", "name": "한국전력", "value": 134000, "change": -1.89, "price": 21584, "prev_close": 22000, "spark": [21926.5, 22154.9, 22017.2, 21903.8, 22310.0, 21531.6, 21568.4, 22199.3, 21982.2, 22110.5, 21438.2, 21830.8, 21401.5, 21536.6, 21444.3, 21915.7, 22104.4, 21683.7, 22007.1, 21962.7, 21879.1, 21445.0, 21805.1, 21690.0, 21579.7, 22019.6, 21722.4, 21213.5, 21322.1, 21584]}, {"code": "900113", "name": "신전력113", "value": 42762, "change": -0.55, "price": 41309, "prev_close": 41537, "spark": [41747.6, 41996.5, 41270.3, 40695.2, 41069.1, 40866.1, 41540.1, 40814.2, 41246.2, 41898.0, 41524.3, 40986.9, 41889.6, 41698.3, 41057.7, 40913.2, 41901.5, 41709.6, 42169.9, 41345.5, 40845.1, 41653.2, 40609.2, 41595.6, 40993.2, 41232.6, 41058.8, 41829.0, 41743.9, 41309]}, {"code": "900102", "name": "신전력102", "value": 41301, "change": 1.45, "price": 128889, "prev_close": 127047, "spark": [124739.5, 127303.0, 125410.9, 124809.5, 127377.8, 125152.0, 126063.3, 127207.0, 127966.2, 127201.3, 128955.9, 129799.4, 126417.4, 125862.6, 126532.7, 126644.4, 127612.6, 126579.8, 130207.9, 126055.1, 128756.0, 126083.2, 128113.7, 127044.5, 129135.6, 126975.1, 128046.2, 128544.1, 127248.7, 128889]}, {"code": "900054", "name": "신전력54", "value": 33077, "change": -2.85, "price": 63487, "prev_close": 65349, "spark": [64593.2, 64338.5, 65709.1, 64038.5, 64169.5, 65921.4, 64858.9, 64064.9, 64438.4, 65752.7, 64970.4, 65378.3, 64929.2, 64797.8, 63612.1, 65580.0, 65223.4, 63207.5, 65100.0, 64101.8, 65323.7, 64233.3, 64792.3, 63311.5, 64392.2, 64343.7, 63036.3, 63176.9, 63753.0, 63487]}, {"code": "900005", "name": "신전력5", "value": 32651, "change": -2.31, "price": 105079, "prev_close": 107564, "spark": [109439.4, 109217.1, 109066.3, 106961.1, 105305.3, 109200.2, 108031.0, 106981.7, 106566.0, 106348.4, 108008.7, 107447.8, 104845.9, 106430.1, 104611.9, 107342.3, 107004.7, 105714.7, 104836.2, 105340.7, 104753.4, 107861.6, 103644.1, 106303.6, 104085.9, 105250.6, 105631.9, 105602.0, 107167.2, 105079]}, {"code": "900055", "name": "신전력55", "value": 31175, "change": 1.42, "price": 48853, "prev_close": 48169, "spark": [48900.2, 48007.6, 48782.6, 47986.5, 48193.6, 48547.6, 49014.7, 47495.2, 49126.5, 48054.8, 47491.7, 48283.7, 48002.2, 49347.3, 48582.1, 49098.2, 49108.6, 47751.1, 49337.8, 49077.8, 47770.8, 49534.5, 49029.2, 49469.6, 47974.9, 48496.0, 49015.0, 48543.1, 48194.8, 48853]}, {"code": "036460", "name": "한국가스공사", "value": 31000, "change": 1.22, "price": 28342, "prev_close": 28000, "spark": [27509.5, 28249.5, 27689.2, 28581.3, 27751.2, 27621.2, 28046.7, 28580.7, 28185.5, 28626.9, 27789.2, 28407.7, 27830.5, 27986.6, 27901.6, 28381.4, 27936.2, 27705.6, 28037.0, 28208.6, 28266.2, 27820.0, 28497.4, 28473.5, 28320.4, 28059.4, 28443.8, 28658.4, 28835.1, 28342]}, {"code": "900026", "name": "신전력26", "value": 28700, "change": -0.43, "price": 76331, "prev_close": 76661, "spark": [77830.4, 75697.7, 77810.3, 75366.5, 76281.4, 75623.1, 77991.6, 75289.4, 75546.2, 75373.8, 75472.1, 75468.5, 75621.3, 77893.3, 75044.2, 76235.3, 77035.7, 77785.6, 76376.4, 76200.8, 77159.1, 74960.9, 75461.2, 74939.9, 77309.9, 77399.1, 76425.0, 75852.6, 76582.7, 76331]}, {"code": "900013", "name": "신전력13", "value": 23231, "change": -1.42, "price": 65620, "prev_close": 66565, "spark": [66109.3, 66777.7, 67016.8, 67364.9, 66291.2, 65888.0, 65403.6, 67096.5, 65442.8, 65641.9, 66197.9, 67442.2, 66882.1, 64953.3, 65723.4, 65960.6, 65168.0, 67124.4, 66534.5, 65382.3, 67155.4, 66771.4, 66354.4, 66252.2, 64873.4, 65062.4, 64513.4, 65203.9, 64672.2, 65620]}, {"code": "900021", "name": "신전력21", "value": 22335, "change": 1.63, "price": 27533, "prev_close": 27091, "spark": [26766.7, 27334.8, 27304.2, 27663.5, 26764.6, 27110.8, 27706.4, 27235.1, 26796.4, 26705.2, 27718.4, 27554.6, 27767.3, 27760.5, 26925.8, 27837.6, 27385.9, 27358.4, 27527.7, 27155.6, 27832.1, 27928.4, 27706.3, 27985.8, 27640.7, 27802.0, 27739.0, 27967.6, 27340.1, 27533]}, {"code": "900027", "name": "신전력27", "value": 17601, "change": -2.94, "price": 45026, "prev_close": 46390, "spark": [47110.6, 45693.4, 46387.6, 45903.1, 46024.6, 46768.6, 46010.4, 45326.7, 45212.2, 46221.1, 46069.8, 45372.1, 46610.2, 45378.5, 44871.5, 45753.6, 45539.2, 45899.3, 44800.2, 45517.5, 44899.0, 45074.0, 45544.5, 46106.8, 45996.8, 44963.9, 44533.0, 45757.3, 44838.2, 45026]}, {"code": "900009", "name": "신전력9", "value": 6739, "change": 0.63, "price": 23803, "prev_close": 23654, "spark": [23506.3, 23476.4, 23612.4, 23727.5, 23403.8, 24048.9, 23914.8, 23609.6, 23640.3, 23380.1, 23922.5, 24089.2, 23933.3, 23639.1, 24045.4, 23824.3, 23396.9, 23554.0, 24211.5, 23775.7, 23600.0, 24174.3, 23853.4, 23653.9, 23307.5, 23914.6, 23571.8, 23483.2, 23761.8, 23803]}]}, {"name": "게임·엔터", "children": [{"code": "259960", "name": "크래프톤", "value": 122000, "change": -1.52, "price": 241276, "prev_close": 245000, "spark": [249003.9, 241969.1, 247950.1, 242582.9, 244395.5, 247473.3, 242318.5, 244923.5, 243915.8, 246159.1, 241057.2, 246398.0, 240120.0, 241402.0, 244558.7, 244391.7, 239318.3, 244418.2, 240639.5, 239465.7, 246357.7, 243700.6, 237623.9, 244601.3, 241851.0, 246331.7, 242615.6, 240198.7, 241216.1, 241276]}, {"code": "352820", "name": "하이브", "value": 82000, "change": -1.1, "price": 192855, "prev_close": 195000, "spark": [193132.5, 196360.2, 198510.6, 197233.4, 193726.0, 196427.3, 190834.5, 192627.3, 195038.2, 191604.5, 193959.8, 195677.4, 193012.3, 190589.3, 192893.5, 194941.6, 197327.7, 190261.3, 192061.5, 194666.5, 190256.2, 191084.8, 194360.4, 195340.7, 193986.7, 190583.1, 191708.5, 191585.1, 195590.3, 192855]}, {"code": "036570", "name": "엔씨소프트", "value": 53000, "change": -2.56, "price": 190008, "prev_close": 195000, "spark": [193263.0, 196332.5, 193610.9, 194745.2, 193183.8, 191431.4, 191207.9, 192133.7, 195741.9, 192781.9, 196477.7, 190545.4, 190790.1, 192787.9, 195110.1, 194660.8, 192691.6, 193515.1, 195340.6, 194359.6, 193172.7, 192922.4, 193512.7, 190412.6, 194030.7, 187782.3, 187721.7, 186684.2, 189026.5, 190008]}, {"code": "251270", "name": "넷마블", "value": 49000, "change": -1.41, "price": 54224, "prev_close": 55000, "spark": [54216.5, 54846.8, 56003.6, 54969.4, 55912.2, 54154.8, 54415.4, 55342.5, 53958.3, 53953.5, 55153.4, 55113.2, 54260.9, 54022.5, 55668.6, 54435.3, 55142.1, 53702.7, 53474.5, 54457.3, 54315.5, 53779.3, 53397.8, 54731.0, 54559.8, 54263.9, 55190.3, 53286.9, 53820.5, 54224]}]}]};
+updateHeader(EMBEDDED_DATA);
+render(EMBEDDED_DATA);
+
+window.addEventListener("resize", () => {
+  if (currentData) requestAnimationFrame(() => render(currentData));
+});
+
+document.getElementById("search").addEventListener("input", e => {
+  const q = e.target.value.trim().toLowerCase();
+  d3.selectAll("g.cell-g").style("opacity", d => {
+    if (!q) return 1;
+    return (d.data.name.toLowerCase().includes(q) || d.data.code.includes(q)) ? 1 : 0.15;
+  });
+});
+
+
+// ============================================================
+// 포트폴리오 패널
+// ============================================================
+const PF_KEY = "kospi_heatmap_portfolio_v1";
+let pfHoldings = [];
+try { pfHoldings = JSON.parse(localStorage.getItem(PF_KEY) || "[]"); } catch (e) {}
+
+const STOCK_INDEX = {};
+EMBEDDED_DATA.children.forEach(sec => sec.children.forEach(s => {
+  STOCK_INDEX[s.code] = { name: s.name, price: s.price, change: s.change, sector: sec.name };
+}));
+
+const datalistEl = document.getElementById("pf-tickers");
+Object.entries(STOCK_INDEX).forEach(([code, info]) => {
+  const o = document.createElement("option");
+  o.value = info.name + " (" + code + ")";
+  datalistEl.appendChild(o);
+});
+
+function pfPersist() { try { localStorage.setItem(PF_KEY, JSON.stringify(pfHoldings)); } catch (e) {} }
+
+function pfRender() {
+  const list = document.getElementById("pf-list");
+  if (pfHoldings.length === 0) {
+    list.innerHTML = '<div class="pf-empty">종목을 추가하면 손익이 표시됩니다</div>';
+  } else {
+    list.innerHTML = pfHoldings.map((h, idx) => {
+      const info = STOCK_INDEX[h.code];
+      if (!info) return "";
+      const cur = info.price;
+      const cost = h.avg * h.qty;
+      const mkt = cur * h.qty;
+      const pnl = mkt - cost;
+      const ret = ((cur - h.avg) / h.avg) * 100;
+      const cls = pnl >= 0 ? "pf-pos" : "pf-neg";
+      const sign = pnl >= 0 ? "+" : "";
+      return `<div class="pf-item">
+        <div class="pf-item-head">
+          <div><span class="pf-item-name">${escapeHtml(info.name)}</span><span class="pf-item-code">${h.code}</span></div>
+          <button class="pf-item-del" data-idx="${idx}">×</button>
+        </div>
+        <div class="pf-item-row"><span class="k">평단가</span><span class="v">${h.avg.toLocaleString()}원</span></div>
+        <div class="pf-item-row"><span class="k">현재가</span><span class="v">${cur.toLocaleString()}원</span></div>
+        <div class="pf-item-row"><span class="k">보유</span><span class="v">${h.qty.toLocaleString()}주</span></div>
+        <div class="pf-item-row pf-item-pnl-row"><span class="k">평가손익</span><span class="v ${cls}">${sign}${pnl.toLocaleString()}원</span></div>
+        <div class="pf-item-row"><span class="k">수익률</span><span class="v ${cls}">${sign}${ret.toFixed(2)}%</span></div>
+      </div>`;
+    }).join("");
+  }
+  let totCost = 0, totMkt = 0;
+  pfHoldings.forEach(h => {
+    const info = STOCK_INDEX[h.code];
+    if (!info) return;
+    totCost += h.avg * h.qty;
+    totMkt += info.price * h.qty;
+  });
+  const totPnl = totMkt - totCost;
+  const totRet = totCost > 0 ? (totPnl / totCost * 100) : 0;
+  const cls = totPnl >= 0 ? "pf-pos" : "pf-neg";
+  const sign = totPnl >= 0 ? "+" : "";
+  document.getElementById("pf-cost").textContent = totCost.toLocaleString() + "원";
+  document.getElementById("pf-mkt").textContent = totMkt.toLocaleString() + "원";
+  const pnlEl = document.getElementById("pf-pnl");
+  pnlEl.textContent = sign + totPnl.toLocaleString() + "원";
+  pnlEl.className = "pf-v " + cls;
+  const retEl = document.getElementById("pf-ret");
+  retEl.textContent = sign + totRet.toFixed(2) + "%";
+  retEl.className = "pf-v " + cls;
+}
+
+document.getElementById("pf-toggle").addEventListener("click", () => {
+  document.getElementById("portfolio").classList.toggle("hidden");
+  document.getElementById("pf-toggle").classList.toggle("active");
+  setTimeout(() => { if (currentData) render(currentData); }, 220);
+});
+document.getElementById("pf-close").addEventListener("click", () => {
+  document.getElementById("portfolio").classList.add("hidden");
+  document.getElementById("pf-toggle").classList.remove("active");
+  setTimeout(() => { if (currentData) render(currentData); }, 220);
+});
+
+document.getElementById("pf-add").addEventListener("click", () => {
+  const q = document.getElementById("pf-search").value.trim();
+  const m = q.match(/\((\d{6})\)/) || [];
+  let code = m[1];
+  if (!code) {
+    const found = Object.entries(STOCK_INDEX).find(([c, i]) => i.name === q || c === q);
+    if (found) code = found[0];
+  }
+  const avg = parseInt(document.getElementById("pf-avg").value, 10);
+  const qty = parseInt(document.getElementById("pf-qty").value, 10);
+  if (!code || !STOCK_INDEX[code]) { alert("종목을 datalist에서 선택해주세요"); return; }
+  if (!avg || avg < 1) { alert("평단가를 입력해주세요"); return; }
+  if (!qty || qty < 1) { alert("수량을 입력해주세요"); return; }
+  pfHoldings.push({ code, avg, qty, ts: Date.now() });
+  pfPersist(); pfRender();
+  document.getElementById("pf-search").value = "";
+  document.getElementById("pf-avg").value = "";
+  document.getElementById("pf-qty").value = "";
+});
+
+document.getElementById("pf-list").addEventListener("click", (e) => {
+  if (e.target.classList.contains("pf-item-del")) {
+    pfHoldings.splice(parseInt(e.target.dataset.idx, 10), 1);
+    pfPersist(); pfRender();
+  }
+});
+
+pfRender();
+
+</script>
+</body>
+</html>
