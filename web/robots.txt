@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+Disallow: /data/_meta.json
+
+# 한국 검색엔진 명시적 허용
+User-agent: Yeti
+Allow: /
+
+User-agent: Daum
+Allow: /
+
+User-agent: NaverBot
+Allow: /
+
+# 사이트맵
+Sitemap: https://korea-heatmap.onsecon.workers.dev/sitemap.xml
