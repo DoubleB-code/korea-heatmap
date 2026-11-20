@@ -1,0 +1,27 @@
+{
+  "_meta": {
+    "year": 2026,
+    "source": "추정치 — KRX 공식 발표(매년 12월 말~1월 초) 후 재검증 필수",
+    "verified_with_krx_official": false,
+    "last_updated_iso": "2026-05-11",
+    "note": "음력 환산 및 대체공휴일은 정부 공식 발표 기준으로 확정. 운영 전 https://open.krx.co.kr 에서 cross-check 필요."
+  },
+  "holidays": [
+    { "date": "2026-01-01", "name": "신정", "weekday": "목" },
+    { "date": "2026-02-16", "name": "설날 연휴", "weekday": "월" },
+    { "date": "2026-02-17", "name": "설날", "weekday": "화" },
+    { "date": "2026-02-18", "name": "설날 연휴", "weekday": "수" },
+    { "date": "2026-03-02", "name": "삼일절 대체공휴일", "weekday": "월", "note": "3/1 일요일" },
+    { "date": "2026-05-05", "name": "어린이날", "weekday": "화" },
+    { "date": "2026-05-25", "name": "부처님오신날 대체공휴일", "weekday": "월", "note": "5/24 일요일" },
+    { "date": "2026-06-03", "name": "제9회 전국동시지방선거", "weekday": "수" },
+    { "date": "2026-08-17", "name": "광복절 대체공휴일", "weekday": "월", "note": "8/15 토요일" },
+    { "date": "2026-09-24", "name": "추석 연휴", "weekday": "목" },
+    { "date": "2026-09-25", "name": "추석", "weekday": "금" },
+    { "date": "2026-10-09", "name": "한글날", "weekday": "금" },
+    { "date": "2026-12-25", "name": "성탄절", "weekday": "금" },
+    { "date": "2026-12-31", "name": "연말 휴장", "weekday": "목", "note": "KRX 자체 휴장 (법정 공휴일 아님)" }
+  ],
+  "weekends_excluded": true,
+  "note_for_settlement": "이 날짜에 정산 cron이 호출되면 즉시 skip 처리해야 함. 직전 영업일 종가로 잘못 정산되는 사고 방지."
+}
